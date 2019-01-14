@@ -17,7 +17,7 @@ import geocounts.formats.io.RawTrafficDataFileTXTDecoder;
 
 
 File theInputFile = new File("path to your GC file.txt");  
-RawTrafficData rawdata = RawTrafficDataFileTXTDecoder.loadFromFile(theFile, true);  
+RawTrafficData rawdata = RawTrafficDataFileTXTDecoder.loadFromFile(theInputFile, true);  
 
 
 ## To encode:
@@ -33,6 +33,5 @@ fileName.startDateTime[0] = 2019;
 fileName.startDateTime[1] = 1;  
 fileName.startDateTime[2] = 13;  
 
-File dir = new File("C:\\");  
-File theOutputFile = new File(dir, fileName.toString());  
+File theOutputFile = new File(new File("C:/"), fileName.toString());  
 RawTrafficDataFileTXTEncoder.writeData(theOutputFile, rawdata);  
