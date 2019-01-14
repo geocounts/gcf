@@ -4,7 +4,9 @@ The GEOCOUNTS Format
 This is used by the traffic counting industry to transmit all kinds of data including  
 vehicles, pedestrians, bikes, both on or off road.
 
-See <a href="https://geocounts.com/api/format">the specification docs</a>
+See [the specification docs][example].
+
+  [example]: https://geocounts.com/api/format
 
 
 ## To decode:
@@ -25,12 +27,12 @@ import geocounts.traffic.formats.RawTrafficData;
 import geocounts.traffic.formats.RawTrafficDataFilename;  
 import geocounts.formats.io.RawTrafficDataFileTXTEncoder;  
 
-RawTrafficDataFilename fileName = new RawTrafficDataFilename();
+RawTrafficDataFilename fileName = new RawTrafficDataFilename();  
 fileName.setStationID("THESTATIONID");  
 fileName.startDateTime[0] = 2019;  
 fileName.startDateTime[1] = 1;  
 fileName.startDateTime[2] = 13;  
 
-File dir = new File("C:\\");
+File dir = new File("C:\\");  
 File theOutputFile = new File(dir, fileName.toString());  
 RawTrafficDataFileTXTEncoder.writeData(theOutputFile, rawdata);  
