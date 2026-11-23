@@ -26,6 +26,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import geocounts.formats.units.UnitConverter;
+
 
 /**
  * <h1>SL - Station Labels</h1>
@@ -50,9 +52,13 @@ public class StationLabels {
    * Keyed by channel ID
    */
   private final Map<Integer, LabelSetForElement> channelLabels = new HashMap<Integer, LabelSetForElement>();
+  /**
+   * Keyed by {@link ChannelDirEnum} code
+   */
   private final Map<Integer, LabelSetForElement> directionLabels = new HashMap<Integer, LabelSetForElement>();
   
   private final RawTrafficDataStation header;
+  
   protected StationLabels(RawTrafficDataStation header) {
     this.header = header;
     this.header.addChannelIDChange(new _ChangeChannel(this));
@@ -61,11 +67,15 @@ public class StationLabels {
   public void copyStationLevelFrom(StationLabels other) {
     stationLabels.copyFrom(other.stationLabels);
   }
-
-  public void copyFrom(StationLabels other) {
+  
+  public void clear() {
     stationLabels.clear();
     channelLabels.clear();
     directionLabels.clear();
+  }
+  
+  public void copyFrom(StationLabels other) {
+    clear();
     mergeFrom(other);
   }
 
@@ -222,6 +232,13 @@ public class StationLabels {
       return null;
     return set.get(field);
   }
+  
+  public boolean removeDirectionLabel(ChannelDirEnum dir, StationLabelElementField field) {
+    LabelSetForElement set = getDirectionLabel(dir);
+    if (set == null)
+      return false;
+    return set.remove(field);
+  }
 
   public boolean hasChannelLabel(int ch) {
     return channelLabels.containsKey(ch);
@@ -294,6 +311,25 @@ public class StationLabels {
       return null;
     return set.get(field);
   }
+
+  /**
+   * 
+   * @param channelID
+   * @param field {@link StationLabelElementField}
+   */
+  public boolean removeChannelLabel(int channelID, StationLabelElementField field) {
+    LabelSetForElement labels = channelLabels.get(channelID);
+    if (labels == null)
+      return false;
+    return labels.remove(field);
+  }
+  
+  public boolean removeOtherSystemChannelLabel(int channelID, String othersystemname) {
+    LabelSetForElement ls = getChannelLabel(channelID);
+    if (ls == null)
+      return false;
+    return ls.removeOtherSystemID(othersystemname);
+  }
   
   /**
    * 
@@ -309,15 +345,22 @@ public class StationLabels {
     return ls.getOtherSystemID(othersystemname);
   }
   
+  public String getOtherSystemChannelLabel(String othersystemname, int channelID, String defaultValue) {
+    OtherSystemIDLabelTextValue ls = getOtherSystemChannelLabel(othersystemname, channelID);
+    if (ls == null)
+      return defaultValue;
+    String result = ls.getSystemValueID();
+    return result != null ? result : defaultValue;
+  }
+  
   public Double getOtherSystemChannelLabel(String othersystemname, int channelID, Double defaultValue) {
     LabelSetForElement ls = getChannelLabel(channelID);
     if (ls == null)
       return defaultValue;
-    try {
-      return Double.parseDouble(ls.getOtherSystemID(othersystemname).getSystemValueID());
-    } catch (Exception ex) {
+    OtherSystemIDLabelTextValue v = ls.getOtherSystemID(othersystemname);
+    if (v == null)
       return defaultValue;
-    }
+    return v.getSystemValueID_AsDouble(defaultValue);
   }
   
   public OtherSystemIDLabelTextValue getOtherSystemDirectionLabel(String othersystemname, ChannelDirEnum dir) {
@@ -453,12 +496,24 @@ public class StationLabels {
     }
   }
   
+  /**
+   * 
+   * @param othersystemname
+   * @param defaultValue
+   * @return An Integer
+   * @see #getStationLabel(StationLabelElementField, Double)
+   */
+  public Integer getOtherSystemStationLabel(String othersystemname, Integer defaultValue) {
+    Double result = getOtherSystemStationLabel(othersystemname, defaultValue != null ? defaultValue.doubleValue() : null);
+    return result != null ? result.intValue() : null;
+  }
+  
   protected void addStationLabel(StationLabelElementField field, String[] multiValues) {
     StringBuilder labels = new StringBuilder();
     for (int vc=0; vc<multiValues.length; vc++) {
       if (vc > 0)
         labels.append(',');
-      labels.append(multiValues[vc] != null ? multiValues[vc] : ""); // RawTrafficDataFileTXTEncoder.escape.decode
+      labels.append(multiValues[vc] != null ? multiValues[vc].replace(',', ' ').trim() : ""); // RawTrafficDataFileTXTEncoder.escape.decode
     }
     
     MultiLabelTextValue multi = new MultiLabelTextValue(labels.toString(), multiValues);
@@ -507,7 +562,7 @@ public class StationLabels {
   }
   
   public boolean addChannelLabel(int channelID, StationLabelElementField field, String text) {
-    if ((channelID < 0) || (field == null) || (text == null) || !field.channel)
+    if ((channelID < 0) || (field == null) || (text == null) || (text.length() == 0) || !field.channel)
       return false;
     
     StationLabelRec rec = new StationLabelRec(LabelElementType.channel, channelID);
@@ -530,7 +585,7 @@ public class StationLabels {
   
   private void add(StationLabelRec r) {
     LabelSetForElement elementLabels = null;
-    switch (r.elementType) {
+    switch (r.elementType.getAggregation()) {
     case channel  : {
       elementLabels = channelLabels.get(r.ElementID);
       if (elementLabels == null) {
@@ -582,7 +637,7 @@ public class StationLabels {
   }
   
   public final static class StationLabelRec extends RawTrafficDataHeaderElement {
-    private StationLabelRec(LabelElementType eType, int eID) {
+    private StationLabelRec(LabelElementType.Impl eType, int eID) {
       this.elementType = eType;
       this.ElementID = eID;
     }
@@ -597,9 +652,11 @@ public class StationLabels {
         this.ElementID = Integer.parseInt(unescapedLine.substring(pos1, pos2));
         pos1 = pos2+1;
         pos2 = unescapedLine.indexOf(',', pos1);
+        if (pos2 == -1)
+          RawFmtUtils.throwException(this.elementType, "Not enough fields", this.elementType);
         this.field = StationLabelElementField.valueOf(unescapedLine.substring(pos1, pos2));
         
-        if (!this.elementType.accepts(this.field))
+        if (!this.elementType.apply(this.field))
           RawFmtUtils.throwException(this.elementType, "Field is incompatible with the element type", this.field);
 
         pos1 = pos2+1;
@@ -610,8 +667,8 @@ public class StationLabels {
     /**
      * @see LabelElementType
      */
-    private LabelElementType elementType;
-    public LabelElementType getElementType() {
+    private LabelElementType.Impl elementType;
+    public LabelElementType.Impl getElementType() {
       return elementType;
     }
     
@@ -671,7 +728,10 @@ public class StationLabels {
       this.field = StationLabelElementField.valueOf(data[2]);
       this._text = createLabelTextValue(this.field, data[3]);
     }
-  
+
+    @Override
+    public void clear() {
+    }
   }
 
   public static abstract class LabelTextValue {
@@ -746,6 +806,23 @@ public class StationLabels {
     public String getSystemValueID() {
       return super.getField(1);
     }
+    
+    public Double getSystemValueID_AsDouble(Double defaultValue) {
+      try {
+        return Double.parseDouble(getSystemValueID());
+      } catch (Exception ex) {
+        return defaultValue;
+      }
+    }
+    
+    public Integer getSystemValueID_AsInteger(Integer defaultValue) {
+      try {
+        return Integer.parseInt(getSystemValueID());
+      } catch (Exception ex) {
+        return defaultValue;
+      }
+    }
+
   }
   
   public static class SimpleLabelTextValue extends LabelTextValue {
@@ -767,13 +844,13 @@ public class StationLabels {
   /**
    * @see StationLabelElementField
    */
-  public class LabelSetForElement implements Iterable<StationLabelRec> {
+  public static class LabelSetForElement implements Iterable<StationLabelRec> {
     private final HashMap<StationLabelElementField, LabelTextValue> fieldValues = new HashMap<StationLabelElementField, LabelTextValue>();
     private final HashMap<String, OtherSystemIDLabelTextValue> otherSystemIDs = new HashMap<String, OtherSystemIDLabelTextValue>();
     
     public final int ElementID;
-    public final LabelElementType elementType;
-    private LabelSetForElement(int eid, LabelElementType eType) {
+    public final LabelElementType.Impl elementType;
+    private LabelSetForElement(int eid, LabelElementType.Impl eType) {
       this.ElementID = eid;
       this.elementType = eType;
     }
@@ -791,6 +868,14 @@ public class StationLabels {
         putOtherSystemID((OtherSystemIDLabelTextValue)text);
       } else
         fieldValues.put(field, text);
+    }
+    
+    public SimpleLabelTextValue putText(StationLabelElementField field, String value) {
+      if (value == null)
+        return null;
+      SimpleLabelTextValue result = new SimpleLabelTextValue(value);
+      put(field, result);
+      return result;
     }
     
     public boolean remove(StationLabelElementField field) {
@@ -814,12 +899,28 @@ public class StationLabels {
       return text != null ? text.toString() : null;
     }
     
+    public Double getMetricValue(StationLabelElementField field, UnitsUsed FU) {
+      UnitConverter converter = field.getUnitConverter(FU);
+      if (converter == null)
+        return null;
+      
+      String value = get(field);
+      if (value == null)
+        return null;
+      
+      try {
+        return converter.toMetric(Double.parseDouble(value));
+      } catch (Exception e) {
+        return null;
+      }
+    }
+    
     private void putOtherSystemID(OtherSystemIDLabelTextValue tv) {
       otherSystemIDs.put(tv.getSystemName(), tv);
     }
    
-    private void removeOtherSystemID(String systemName) {
-      otherSystemIDs.remove(systemName);
+    private boolean removeOtherSystemID(String systemName) {
+      return otherSystemIDs.remove(systemName) != null;
     }
     
     /**
@@ -840,6 +941,10 @@ public class StationLabels {
     @Override
     public Iterator<StationLabelRec> iterator() {
       return all().iterator();
+    }
+    
+    public Collection<OtherSystemIDLabelTextValue> getOtherSystemIDs() {
+      return otherSystemIDs.values();
     }
     
     public List<StationLabelRec> all() {
@@ -870,7 +975,7 @@ public class StationLabels {
     }
   }
 
-  class _ChangeChannel implements ChannelIDChange {
+  static class _ChangeChannel implements ChannelIDChange {
     private final StationLabels sl;
     private _ChangeChannel(StationLabels parent) {
       this.sl = parent;

@@ -32,6 +32,12 @@ public class FileChecksum extends RawTrafficDataHeaderElement {
   }
 
   @Override
+  public void clear() {
+    algorithmid = null;
+    value = null;
+  }
+
+  @Override
   protected String[] write() {
     return new String[]{algorithmid, value};
   }

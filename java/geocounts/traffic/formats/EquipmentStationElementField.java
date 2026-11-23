@@ -71,7 +71,55 @@ public enum EquipmentStationElementField {
     public void set(UnitsUsed units, Equipment SE, String value) throws Exception {
       SE.addStationRec(this, value);
     }
-  }
+  },
+  
+  /**
+   * A compass direction that a camera is facing. This must be a number between 0 and 359.
+   * This is equivalent to 'pan'
+   * @since 1.321
+   */
+  facing() {
+    @Override
+    public void set(UnitsUsed units, Equipment SE, String value) throws Exception {
+      SE.removeStationRec(this);
+      if ((value == null) || (value.length() == 0))
+        return;
+      double v = Double.parseDouble(value);
+      if ((v < 0) || (v > 359))
+        return;
+
+      SE.addStationRec(this, (int)v);
+    }
+    
+    @Override
+    public boolean isNumeric() {
+      return true;
+    }
+  },
+  
+  /**
+   * A latitude, longitude and altitude for the location of the equipment.
+   * This can be used to distinguish the location of a camera from the location it is monitoring
+   * @since 1.324
+   */
+  countercoordinate() {
+
+    @Override
+    public void set(UnitsUsed units, Equipment SE, String value) throws Exception {
+      SE.removeStationRec(this);
+      if (value == null)
+        return;
+      double[] latLng = RawFmtUtils.splitDouble(value, RawTrafficDataHeader.DELIM_FIELD);
+      LatLongCoordinate point = new LatLongCoordinate();
+      point.setLatLng(latLng);
+      if (!point.isSet())
+        return;
+      
+      SE.addStationRec(this, point.getLatitude() + Character.toString(RawTrafficDataHeader.DELIM_FIELD) + point.getLongitude() + Character.toString(RawTrafficDataHeader.DELIM_FIELD) + point.altitude);
+    }
+    
+  },
+  
   /*
    * Battery voltage at the end of the study
    *
@@ -83,5 +131,14 @@ public enum EquipmentStationElementField {
   } */
   ;
   
+  public boolean isNumeric() {
+    return false;
+  }
+  
   public abstract void set(UnitsUsed units, Equipment SE, String value) throws Exception;
+  
+  public String get(Equipment SE, String defaultValue) {
+    String result = SE.getStationRec(this);
+    return result != null ? result : defaultValue;
+  }
 }

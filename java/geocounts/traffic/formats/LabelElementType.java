@@ -18,51 +18,97 @@
  */
 package geocounts.traffic.formats;
 
+import java.util.function.Function;
+
 /**
+ * These represent ways to aggregate channels
  * @see StationLabelElementField
  * @see EquipmentChannelElementField
  */
-public enum LabelElementType implements IdDesc {
+public class LabelElementType {
+  private LabelElementType() {}
+  
   /**
-   * A channel is defined with a SC record
-   * @see ChannelData
+   * 
+   * @see LabelElementTypeChannel
    */
-  channel() {
+  public static final LabelElementTypeChannel channel = new LabelElementTypeChannel();
+  /**
+   * 
+   * @see LabelElementTypeDirection
+   */
+  public static final LabelElementTypeDirection direction = new LabelElementTypeDirection();
+  /**
+   * 
+   * @see LabelElementTypeStation
+   */
+  public static final LabelElementTypeStation station = new LabelElementTypeStation();
+  
+  public static Impl valueOf(String name) {
+    if (name.equals("channel"))
+      return channel;
+    if (name.equals("direction"))
+      return direction;
+    if (name.equals("station"))
+      return station;
+    return null;
+  }
+  
+  static abstract class Impl implements Function<StationLabelElementField, Boolean> {
+    public abstract ChannelAggregationEnum getAggregation();
+    
+    public final String name() {
+      return getAggregation().name();
+    }
+  }
+  
+  static class LabelElementTypeChannel extends Impl {
+
     @Override
-    public boolean accepts(StationLabelElementField field) {
+    public ChannelAggregationEnum getAggregation() {
+      return ChannelAggregationEnum.channel;
+    }
+
+    @Override
+    public Boolean apply(StationLabelElementField field) {
       return field.channel;
     }
-  }, 
+    
+  }
+  
   /**
-   * A direction is contained within an SC record. Valid direction codes range between 1 and 8.
+   * A "to" direction is contained within an SC record. Valid direction codes range between 1 and 8.
    * @see ChannelDirEnum
    */
-  direction() {
+  static class LabelElementTypeDirection extends Impl {
+
     @Override
-    public boolean accepts(StationLabelElementField field) {
+    public ChannelAggregationEnum getAggregation() {
+      return ChannelAggregationEnum.direction;
+    }
+
+    @Override
+    public Boolean apply(StationLabelElementField field) {
       return field.direction;
     }
-  },
+    
+  }
+  
   /**
    * 
    * @see RawTrafficDataStation
    */
-  station() {
+  static class LabelElementTypeStation extends Impl {
+
     @Override
-    public boolean accepts(StationLabelElementField field) {
+    public ChannelAggregationEnum getAggregation() {
+      return ChannelAggregationEnum.station;
+    }
+
+    @Override
+    public Boolean apply(StationLabelElementField field) {
       return field.station;
     }
-  };
-
-  @Override
-  public String getId() {
-    return name();
+    
   }
-
-  @Override
-  public String getDescription() {
-    return "Labels refer to a " + getId();
-  }
-  
-  public abstract boolean accepts(StationLabelElementField field);
 }

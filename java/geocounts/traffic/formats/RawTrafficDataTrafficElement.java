@@ -18,23 +18,23 @@
  */
 package geocounts.traffic.formats;
 
-public abstract class RawTrafficDataTrafficElement {
+public abstract class RawTrafficDataTrafficElement implements TimedObject {
   protected long time;
+  
+  @Override
   public long getTime() {
     return time;
   }
 
-  public final void addTime(long adjustMilliseconds) {
+  public final long addTime(long adjustMilliseconds) {
     time += adjustMilliseconds;
+    return time;
   }
 
   public int channelID;
   
-  public int compareTimes(RawTrafficDataTrafficElement o) {
-    long timeDiff = this.getTime() - o.getTime();
-    if (timeDiff == 0)
-      return 0;
-    return timeDiff > 0 ? 1 : -1;
+  public int compareTimes(TimedObject o) {
+    return RawFmtUtils.compareLong(this.getTime(), o.getTime());
   }
 
   public int compareChannels(RawTrafficDataTrafficElement o) {

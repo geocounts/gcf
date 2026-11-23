@@ -77,4 +77,20 @@ public enum SignalPhase implements IdDesc {
   public String getDescription() {
     return desc;
   }
+  
+  public static SignalPhase getSignalPhase(String value) {
+    try {
+      int ord = Integer.parseInt(value);
+      return values()[ord];
+    } catch (Exception ex) {
+      if (value.length() == 1) {
+        char c = value.toLowerCase().charAt(0);
+        for (SignalPhase sp: values()) {
+          if (sp.phaseChar == c)
+            return sp;
+        }
+      }
+    }
+    return SignalPhase.none;
+  }
 }

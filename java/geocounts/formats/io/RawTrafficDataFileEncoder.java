@@ -21,6 +21,7 @@ package geocounts.formats.io;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.function.Predicate;
 
 import geocounts.traffic.formats.*;
 
@@ -54,6 +55,8 @@ public abstract class RawTrafficDataFileEncoder implements java.io.Closeable {
   public RawTrafficDataFileEncoder(File file) throws Exception {
     this(new PrintWriter(file), true);
   }
+  
+  public Predicate<VehicleRec> observationFilter;
   
   /**
    * Prints a line to the file

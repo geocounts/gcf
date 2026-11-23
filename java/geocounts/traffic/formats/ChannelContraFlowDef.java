@@ -22,6 +22,7 @@ package geocounts.traffic.formats;
  * Describes how to treat vehicles with negative speeds
  * @deprecated
  */
+@Deprecated
 public class ChannelContraFlowDef extends RawTrafficDataHeaderElement {
   /**
    * The ID of the channel containing vehicles with negative speeds
@@ -51,4 +52,9 @@ public class ChannelContraFlowDef extends RawTrafficDataHeaderElement {
   public void setFrom(ChannelContraFlowDef other) {
     
   }
+
+  @Override
+  public void clear() {
+  }
+  
 }

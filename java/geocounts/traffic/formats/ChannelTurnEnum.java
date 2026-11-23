@@ -66,12 +66,18 @@ public enum ChannelTurnEnum {
     return (ordinal() > 0) && (ordinal() < 4);
   }
   
+  /*
   public int getDegrees() {
-    return ordinal()*45;
+    return (int)getAngle().toDegrees();
   }
+  */
   
   public int getCode() {
     return ordinal();
+  }
+  
+  public CoordinateAngle getAngle() {
+    return CoordinateAngle.createFromDegrees(ordinal()*45);
   }
   
   /**
@@ -116,23 +122,32 @@ public enum ChannelTurnEnum {
   
   /**
    * If the directions are not both set to one of the 8 compass points, this returns null
-   * @param from
-   * @param to
+   * @param approach_from The approach leg. E.g. South
+   * @param depart_to The departure leg. E.g. North
    * @return May return null
    */
-  public static ChannelTurnEnum compute(ChannelDirEnum from, ChannelDirEnum to) {
-    if ((from == null) || (to == null))
+  public static ChannelTurnEnum compute(ChannelDirEnum approach_from, ChannelDirEnum depart_to) {
+    if ((approach_from == null) || (depart_to == null))
       return null;
     
-    int fromDegrees = from.getDegrees();
+    int fromDegrees = approach_from.getDegrees();
     if (fromDegrees == Integer.MAX_VALUE)
       return null;
-    int toDegrees = to.getDegrees();
+    int toDegrees = depart_to.getDegrees();
     if (toDegrees == Integer.MAX_VALUE)
       return null;
     
     int changeDeg = toDegrees - fromDegrees - 180;
     
     return fromDegrees(changeDeg);
+  }
+  
+  
+  public static ChannelTurnEnum[] ltr() {
+    return new ChannelTurnEnum[] {ChannelTurnEnum.hardleft, ChannelTurnEnum.left, ChannelTurnEnum.bearleft, ChannelTurnEnum.through, ChannelTurnEnum.bearright, ChannelTurnEnum.right, ChannelTurnEnum.hardright, ChannelTurnEnum.uturn};
+  }
+  
+  public static ChannelTurnEnum[] rtl() {
+    return new ChannelTurnEnum[] {ChannelTurnEnum.hardright, ChannelTurnEnum.right, ChannelTurnEnum.bearright, ChannelTurnEnum.through, ChannelTurnEnum.bearleft, ChannelTurnEnum.left, ChannelTurnEnum.hardleft, ChannelTurnEnum.uturn};
   }
 }

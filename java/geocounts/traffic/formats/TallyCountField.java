@@ -62,11 +62,17 @@ public interface TallyCountField extends IdDesc {
    */
   public boolean isAdditive();
   
-  /**
+  /*
    * 
    * @return Whether this field's values must be an integer
    */
-  public boolean isInteger();
+//  public boolean isInteger();
+  
+  /**
+   * 
+   * @return This field's {@link GCFieldType value type}
+   */
+  public GCFieldType getFieldType();
   
   /**
    * 

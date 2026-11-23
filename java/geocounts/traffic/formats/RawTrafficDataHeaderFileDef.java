@@ -20,7 +20,8 @@ package geocounts.traffic.formats;
 
 /**
  * Data relating the File object
- *
+ * @see RawTrafficDataStation
+ * @see TallyRecordsDef
  */
 public class RawTrafficDataHeaderFileDef {
 
@@ -41,7 +42,7 @@ public class RawTrafficDataHeaderFileDef {
    * @see FileChanges
    * @since 1.9969
    */
-  public final FileChanges FX = new FileChanges();
+  public final FileChanges FX = new FileChanges(this);
 
   /**
    * File: Date produced
@@ -52,7 +53,7 @@ public class RawTrafficDataHeaderFileDef {
    * File: Units
    * @see UnitsUsed
    */
-  public final UnitsUsed FU = new UnitsUsed();
+  public final UnitsUsed FU = UnitsUsed.SystemOfUnits.metric.createDefault();
 
   /*
    * File: Name spaces
@@ -66,15 +67,21 @@ public class RawTrafficDataHeaderFileDef {
    */
   public String FE;
   
-  public final void copyFrom(RawTrafficDataHeaderFileDef other) throws Exception {
+  public final void copyFrom(RawTrafficDataHeaderFileDef other) {
     this.FV.copyFrom(other.FV);
     this.FX.copyFrom(other.FX);
     this.FU.copyFrom(other.FU);
 //    this.FN.copyFrom(other.FN);
     this.FD = other.FD;
     this.FE = other.FE;
+    this.FL.copyFrom(other.FL);
     // do NOT copy the FC record
   }
+  
+  /**
+   * @see TxtFileDelimiters
+   */
+  public final TxtFileBodyDelimiters FL = new TxtFileBodyDelimiters();
 
   /**
    * 

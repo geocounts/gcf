@@ -21,31 +21,54 @@ package geocounts.traffic.formats;
 import java.io.File;
 
 public class RawTrafficDataPlusFilename {
+  public RawTrafficDataPlusFilename(RawTrafficData r, RawTrafficDataFilename fileName) {
+    this.data = r != null ? r : new RawTrafficData();
+    this.fileName = fileName != null ? fileName : new RawTrafficDataFilename();
+  }
+  
   public RawTrafficDataPlusFilename(RawTrafficData r, String fileName) {
-    this.data = r;
-    this.fileName = (fileName != null ? new RawTrafficDataFilename(fileName) : null);
+    this(r, fileName != null ? new RawTrafficDataFilename(fileName) : null);
   }
   
   public RawTrafficDataPlusFilename(RawTrafficData r, File rawFile) {
-    this(r, rawFile != null ? rawFile.getName() : null);
+    this(r, rawFile != null ? new RawTrafficDataFilename(rawFile.getName()) : (RawTrafficDataFilename)null);
+    if (rawFile != null)
+      fileSize = rawFile.length();
   }
   
   public RawTrafficDataPlusFilename(RawTrafficData r) {
-    this(r, (String)null);
+    this(r, (RawTrafficDataFilename)null);
   }
   
   public RawTrafficDataPlusFilename(File rawFile) {
-    this(new RawTrafficData(), rawFile);
+    this(null, rawFile);
   }
   
   public RawTrafficDataPlusFilename() {
-    this(new RawTrafficData(), (String)null);
+    this(new RawTrafficData(), (RawTrafficDataFilename)null);
+  }
+
+  /**
+   * Never null
+   */
+  public final RawTrafficData data;
+  
+  /**
+   * Never null
+   */
+  public final RawTrafficDataFilename fileName;
+  
+  public long fileSize;
+  
+  public RawTrafficDataHeader header() {
+    return data.header;
   }
   
-  public final RawTrafficData data;
-  public RawTrafficDataFilename fileName;
-  
+  /**
+   * 
+   * @return The station ID, or null if not set
+   */
   public String getStationID() {
-    return fileName != null ? fileName.getStationID() : null;
+    return fileName.getStationID() != null ? fileName.getStationID() : data.header.S.SI.getValue();
   }
 }

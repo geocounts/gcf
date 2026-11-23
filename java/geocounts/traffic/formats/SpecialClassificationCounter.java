@@ -18,8 +18,19 @@
  */
 package geocounts.traffic.formats;
 
+/**
+ * A vehicle classification system that derives a value from another classification value.
+ * @see SingleClassificationCounter
+ * @see MultiClassificationCounter
+ * @see WKTypeClass
+ */
 public interface SpecialClassificationCounter {
-  public boolean isCounted(int classID);
+  public int[] getIDs();
   
-  public double getCount(VehicleTallyRec tally);
+  public boolean isCounted(int typeClassID);
+  
+  public Number getCount(VehicleTallyRec tally, UnitsUsed units);
+  
+  public Number getCountFromTC(VehicleTallyRec tally);
+
 }

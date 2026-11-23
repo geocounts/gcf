@@ -140,6 +140,7 @@ public final class TallyCountDef extends RawTrafficDataHeaderElement implements 
     return fieldsByID.containsKey(fieldName);
   }
   
+  @Override
   public void clear() {
     fields.clear();
     fieldsByID.clear();
@@ -159,13 +160,7 @@ public final class TallyCountDef extends RawTrafficDataHeaderElement implements 
   }
   
   public String toString(String delim) {
-    StringBuilder result = new StringBuilder();
-    for (int i=0; i<fields.size(); i++) {
-      if (i > 0)
-        result.append(delim);
-      result.append(fields.get(i).getId());
-    }
-    return result.toString();
+    return geocounts.traffic.formats.operators.DelimitedLineBuilder.idsToString(delim, fields);
   }
 
   @Override

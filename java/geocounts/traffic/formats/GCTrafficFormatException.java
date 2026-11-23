@@ -18,7 +18,7 @@
  */
 package geocounts.traffic.formats;
 
-public class GCTrafficFormatException extends Exception {
+public class GCTrafficFormatException extends RuntimeException {
   private static final long serialVersionUID = 1L;
 
   public final Object caller;

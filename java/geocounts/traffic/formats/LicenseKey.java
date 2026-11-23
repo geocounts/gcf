@@ -38,6 +38,12 @@ public class LicenseKey extends RawTrafficDataHeaderElement {
   public EnumHeaderRecords getSourceRecord() {
     return EnumHeaderRecords.GK;
   }
+
+  @Override
+  public void clear() {
+    uuidValue = null;
+    uuidStr = null;
+  }
   
   @Override
   protected String[] write() {
@@ -49,8 +55,7 @@ public class LicenseKey extends RawTrafficDataHeaderElement {
   @Override
   protected void read(String[] data) {
     if (data[0] == null) {
-      uuidValue = null;
-      uuidStr = null;
+      clear();
       return;
     }
     uuidStr = data[0];
@@ -59,6 +64,12 @@ public class LicenseKey extends RawTrafficDataHeaderElement {
   @Override
   public String toString() {
     return uuidValue != null ? uuidValue.toString() : uuidStr;
+  }
+  
+  public boolean match(String another) {
+    if (uuidStr == null)
+      return (another == null);
+    return uuidStr.equalsIgnoreCase(another);
   }
 
 }

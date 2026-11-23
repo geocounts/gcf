@@ -19,7 +19,6 @@
 package geocounts.traffic.formats;
 
 import java.text.ParseException;
-import java.util.Date;
 
 /**
  * There are four categories of {@link EnumRecordType#H header record}. Each category starts with a different letter<ul>
@@ -99,13 +98,26 @@ public enum EnumHeaderRecords implements IdDesc {
   FD("File date produced") {
     @Override
     public String[] getValues(RawTrafficDataHeader header) {
-      return header.F.FD != 0 ? new String[]{header.getObservationDateFormat().format(header.F.FD)} : null;
+      return header.F.FD != 0 ? new String[]{header.formatHeaderEventDateTime(header.F.FD)} : null; //  getObservationDateFormat().format(header.F.FD)
     }
     
     @Override
     public Object setValues(RawTrafficDataHeader header, String value) throws ParseException {
-      header.F.FD = header.getObservationDateFormat().parse(value).getTime();
+      header.F.FD = header.parseHeaderEventDateTime(value);
       return header.F.FD;
+    }
+  },
+  
+  FL("File body delimiters") {
+    @Override
+    public String[] getValues(RawTrafficDataHeader header) throws Exception {
+      return header.F.FL.isDefault() ? null : header.F.FL.write();
+    }
+    
+    @Override
+    public Object setValues(RawTrafficDataHeader header, String value) throws Exception {
+      header.F.FL.fromLine(value);
+      return header.F.FL;
     }
   },
   
@@ -125,7 +137,9 @@ public enum EnumHeaderRecords implements IdDesc {
 
     @Override
     public Object setValues(RawTrafficDataHeader header, String value) {
-      header.F.FE = value;
+      header.F.FE = null;
+      if (value != null)
+        header.F.FE = value.replace("\\,", ",");
       return header.F.FE;
     }
 
@@ -151,7 +165,6 @@ public enum EnumHeaderRecords implements IdDesc {
    * @see RawTrafficDataHeaderFileDef#FX
    */
   FX("File change") {
-
     @Override
     public String[] getValues(RawTrafficDataHeader header) {
       return null;
@@ -239,6 +252,7 @@ public enum EnumHeaderRecords implements IdDesc {
    * @see FileNamespaces
    * @deprecated
    */
+  @Deprecated
   FN("File Tally Totals Namespace") {
     @Override
     public String[] getValues(RawTrafficDataHeader header) throws Exception {
@@ -411,6 +425,7 @@ public enum EnumHeaderRecords implements IdDesc {
    * 
    * @deprecated THIS IDEA IS INCOMPLETE
    */
+  @Deprecated
   SF("Channel Contra-Flow Definition") {
     @Override
     public String[] getValues(RawTrafficDataHeader header) {
@@ -464,21 +479,25 @@ public enum EnumHeaderRecords implements IdDesc {
    * 
    * @formatparam station_id true STRING
    * A station ID. The format must satisfy these rules: <ul conref="stationidformat.dita#stationidformat/sfrules"><li> </li></ul>
+   * 
+   * @formatparam geo_type false ENUM GeoType
+   * 
    * @since 1.9983
    * @see RawTrafficDataStation#SI
    * @see RawTrafficDataFilename#getStationID()
    * @see StationID
+   * @see GeoType
    */
   SI("Station ID") {
 
     @Override
     public String[] getValues(RawTrafficDataHeader header) throws Exception {
-      return header.S.SI.getValue() != null ? new String[]{header.S.SI.getValue()} : null;
+      return header.S.SI.write();
     }
 
     @Override
     public Object setValues(RawTrafficDataHeader header, String value) throws Exception {
-      header.S.SI.set(value);
+      header.S.SI.fromLine(value);
       return header.S.SI;
     }
     
@@ -615,7 +634,11 @@ public enum EnumHeaderRecords implements IdDesc {
   },
   
   /**
-   * The time extents of data in this file
+   * The time extents of data in this file. 
+   * The end_date and end_time should indicate the complete end of the counted period, 
+   * not XX:59:59.999 or XX:59:59.000 or any other variation of a slightly incomplete period.
+   * The consuming application should be able to compute the duration of the count period by simply subtracting the end from the start.
+   * 
    * @formatparam start_date true STRING yyyy/MM/dd
    * The date this count data starts
    * @formatparam start_time true STRING HH:mm:ss.SSS
@@ -623,17 +646,18 @@ public enum EnumHeaderRecords implements IdDesc {
    * @formatparam end_date true STRING yyyy/MM/dd
    * The date this count data ends
    * @formatparam end_time true STRING HH:mm:ss.SSS
-   * The time this count data ends
+   * The time this count data ends (exclusive). This should be the end of the final count period.
    * @formatexample 2014/07/11,00:00:00.000,2014/07/11,03:00:00.000
+   * This means the counting started at midnight on July 11 and stopped exactly three hours later (i.e. no data was recorded at 3:00 AM)
    */
-  SR("Start and End Time")  {
+  SR("Start and End Time") {
     @Override
     public String[] getValues(RawTrafficDataHeader header) {
       if (!header.S.SR.isSet())
         return null;
       String[] result = new String[4];
-      String from = header.getObservationDateFormat().format(header.S.SR.getStartTime());
-      String to   = header.getObservationDateFormat().format(header.S.SR.getEndTime());
+      String from = header.formatHeaderEventDateTime(header.S.SR.getStartTime()); // getObservationDateFormat().format(header.S.SR.getStartTime());
+      String to   = header.formatHeaderEventDateTime(header.S.SR.getEndTime());   // getObservationDateFormat().format(header.S.SR.getEndTime());
       result[0] = from.substring(0, 10);
       result[1] = from.substring(11);
       result[2] = to.substring(0, 10);
@@ -644,10 +668,10 @@ public enum EnumHeaderRecords implements IdDesc {
 
     @Override
     public Object setValues(RawTrafficDataHeader header, String value) throws ParseException {
-      String[] fields = RawFmtUtils.split(value, ',');
-      Date start = header.getObservationDateFormat().parse(fields[0] + "," + fields[1]);
-      Date end   = header.getObservationDateFormat().parse(fields[2] + "," + fields[3]);
-      header.S.SR.set(start.getTime(), end.getTime());
+      String[] fields = RawFmtUtils.split(value, RawTrafficDataHeader.DELIM_FIELD);
+      long start = header.parseHeaderEventDateTime(fields[0], fields[1]);
+      long end   = header.parseHeaderEventDateTime(fields[2], fields[3]);
+      header.S.SR.set(start, end);
       return header.S.SR;
     }
   },
@@ -752,7 +776,7 @@ public enum EnumHeaderRecords implements IdDesc {
 
     @Override
     public Object setValues(RawTrafficDataHeader header, String value) throws ParseException {
-      String[] fieldsValue = RawFmtUtils.split(value, ',');
+      String[] fieldsValue = RawFmtUtils.split(value, RawTrafficDataHeader.DELIM_FIELD);
       if (fieldsValue[0].length() > 0) {
         String[] tzfields = RawFmtUtils.split(fieldsValue[0], ':');
         int hour = 0;
@@ -764,9 +788,12 @@ public enum EnumHeaderRecords implements IdDesc {
           hour = Integer.parseInt(tzfields[0]);
         header.S.SZ.set(hour, Integer.parseInt(tzfields[1]));
       }
-      // add the meaning of the time zone
+      // add the meaning of the time zone.
       if (fieldsValue.length > 1) {
         header.S.SZ.meaning = TimeZoneMeaning.valueOf(fieldsValue[1]);
+      } else {
+//        if (fieldsValue.length > 0) // If no timezone meaning is specified, it will use UTC
+//          header.S.SZ.meaning = TimeZoneMeaning.utc; // if there is an offset but no time zone base, default to UTC, until the remainder changes it
       }
       return header.S.SZ;
     }
@@ -1001,7 +1028,7 @@ public enum EnumHeaderRecords implements IdDesc {
    * @see #VV
    * @see AxleRecordDef
    */
-  VA("Observation sub-component record fields") {
+  VA("Observation axle sub-component record fields") {
     @Override
     public String[] getValues(RawTrafficDataHeader header) throws Exception {
       return header.VA.write();
@@ -1020,6 +1047,22 @@ public enum EnumHeaderRecords implements IdDesc {
       return header.VA.write();
     }
     */
+  },
+  
+  /**
+   * @since 2.072
+   */
+  VG("Observation group sub-component record fields") {
+    @Override
+    public String[] getValues(RawTrafficDataHeader header) throws Exception {
+      return header.VG.write();
+    }
+
+    @Override
+    public RawTrafficDataHeaderElement setValues(RawTrafficDataHeader header, String value) throws Exception {
+      header.VG.fromLine(value);
+      return header.VG;
+    }
   }
   ;
 

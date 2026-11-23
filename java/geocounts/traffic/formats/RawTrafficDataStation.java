@@ -18,14 +18,16 @@
  */
 package geocounts.traffic.formats;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-
-public class RawTrafficDataStation {
+/**
+ * 
+ * Data relating the Station header object
+ * @see RawTrafficDataHeader#S Header component relating to the station
+ * @see RawTrafficDataHeaderFileDef
+ * @see TallyRecordsDef
+ */
+public class RawTrafficDataStation implements ChannelDataSet, CoordinateObject {
   private RawTrafficDataHeader parent;
   
   public RawTrafficDataStation() {
@@ -102,6 +104,11 @@ public class RawTrafficDataStation {
    * @see #getCentroidOfChannels()
    */
   public final StationGPS SG = new StationGPS();
+  
+  @Override
+  public LatLongCoordinate getCoordinate() {
+    return SG.getCoordinate();
+  }
 
   /**
    * Station: Shape
@@ -160,19 +167,9 @@ public class RawTrafficDataStation {
       minChannelID = cd.getChannelID();
   }
   
-  /**
-   * The centroid of the {@link ChannelData channels}
-   * @return {@link LatLongCoordinate}
-   * @since 1.9963
-   * @see #SG
-   */
+  @Override
   public LatLongCoordinate getCentroidOfChannels() {
-    List<LatLongCoordinate> points = new ArrayList<LatLongCoordinate>();
-    for (ChannelData cd: this.getAllChannels()) {
-      if (cd.coordinate.isSet())
-        points.add(cd.coordinate);
-    }
-    return StationShape.getCentroid(points);
+    return getChannelDataSet().getCentroidOfChannels();
   }
 
   /**
@@ -228,7 +225,7 @@ public class RawTrafficDataStation {
    * @param other The source of the data to copy from
    * @throws Exception
    */
-  public final void copyFrom(RawTrafficDataStation other) throws Exception {
+  public final void copyFrom(RawTrafficDataStation other) {
     // clear channels
     clearChannels();
     // add channels
@@ -247,7 +244,7 @@ public class RawTrafficDataStation {
     */
   }
   
-  public void copyFromExcludeChannels(RawTrafficDataStation other) throws Exception {
+  public void copyFromExcludeChannels(RawTrafficDataStation other) {
     this.SA = other.SA;
     this.SS = other.SS;
     this.ST = other.ST;
@@ -304,22 +301,22 @@ public class RawTrafficDataStation {
 
   @Override
   public String toString() {
-    int directions = this.getNumberOfToDirections();
+    int ToDirections = this.getNumberOfToDirections();
     int channels = this.getNumberOfChannels();
     StringBuilder result = new StringBuilder();
     result.append(channels);
-    result.append(" channels ");
-    result.append(directions);
-    result.append(" directions ");
+    result.append(" channels, ");
+    result.append(ToDirections);
+    result.append(" departures, ");
     result.append(SL.toString());
     return result.toString();
   }
   
   /**
-   * Adds channel and contra flow definitions
+   * Adds channels
    * @param other
    */
-  public void setChannelsFrom(RawTrafficDataStation other) {
+  public void setChannelsFrom(ChannelDataSet other) {
     for (ChannelData sc: other.getAllChannels()) {
       setChannelData(sc);
     }
@@ -339,11 +336,7 @@ public class RawTrafficDataStation {
       parent.addChannelIDChange(value);
   }
 
-  /**
-   * 
-   * @param channelID
-   * @return {@link ChannelData} or null if the channel does not exist
-   */
+  @Override
   public ChannelData getChannel(int channelID) {
     try {
       return SC[channelID];
@@ -351,12 +344,45 @@ public class RawTrafficDataStation {
       return null;
     }
   }
+
+  @Override
+  public ChannelData getChannelFromIndex(int index) {
+    return getChannelDataSet().getChannelFromIndex(index);
+  }
+  
+  public BiDirValue getBiDirValue(int channelID) {
+    ChannelData cd = getChannel(channelID);
+    if (cd == null)
+      return null;
+    return BiDirValue.get(cd.to1.getDir());
+  }
+  
+  public enum BiDirValue {
+    neither,
+    /**
+     * North or East
+     */
+    N_E,
+    
+    /**
+     * South or West
+     */
+    S_W;
+    
+    public static BiDirValue get(ChannelDirEnum dir) {
+      if (dir == null)
+        return null;
+      if (dir.getCode() <= 0)
+        return neither;
+      return dir.isNorthOrEast() ? N_E : S_W;
+    }
+  }
   
   /**
    * 
    * @param fromDir
    * @param to1Dir
-   * @param toLane
+   * @param toLane If null, defaults to combined lane = 0
    * @return The first channel found with the given directions and 'to' lane
    */
   public ChannelData getChannel(ChannelDirEnum fromDir, ChannelDirEnum to1Dir, ChannelLaneData toLane) {
@@ -370,22 +396,40 @@ public class RawTrafficDataStation {
     return null;
   }
 
+  @Override
   public boolean hasChannel(int channelID) {
+    if (channelID < 0)
+      return false;
     return SC[channelID] != null;
   }
 
-  public List<ChannelData> getAllChannels() {
-    ArrayList<ChannelData> result = new ArrayList<ChannelData>();
+  @Override
+  public Iterable<ChannelData> getAllChannels() {
+    return getChannelDataSet();
+  }
+  
+  private ChannelDataSetImpl getChannelDataSet() {
+    ChannelDataSetImpl result = new ChannelDataSetImpl();
     for (int i=0; i<SC.length; i++)
       if (SC[i] != null)
-        result.add(SC[i]);
+        result.addChannel(SC[i]);
     return result;
   }
 
+  @Override
   public int getNumberOfChannels() {
     return channels;
   }
 
+  @Override
+  public ChannelData getFirstChannel() {
+    return getChannelDataSet().getFirstChannel();
+  }
+
+  /**
+   * If no channels have been defined, this returns [{@link ChannelData#MAX_CHANNELID}, -1]
+   * @return 2 element array: Current minimum and maximum channel ID.
+   */
   public int[] getMinMaxChannelID() {
     return new int[]{minChannelID, maxChannelID};
   }
@@ -394,6 +438,7 @@ public class RawTrafficDataStation {
    * 
    * @return The number of "to" directions
    * @see #getToDirections()
+   * @see #getChannelsInToDirection(ChannelDirEnum)
    */
   public int getNumberOfToDirections() {
     return getToDirections().size();
@@ -403,14 +448,28 @@ public class RawTrafficDataStation {
    * 
    * @return The set of {@link ChannelData#to1} directions
    * @see #getNumberOfToDirections()
+   * @see #getChannelsInToDirection(ChannelDirEnum)
    */
-  public Set<ChannelDirEnum> getToDirections() {
-    HashSet<ChannelDirEnum> result = new HashSet<ChannelDirEnum>();
-    for (ChannelData ch: getAllChannels())
-      result.add(ch.to1.getDir());
-    return result;
+  @Override
+  public ChannelDirEnumSet getToDirections() {
+    return new ChannelDirEnumSet(getAllChannels(), false);
+  }
+
+  @Override
+  public ChannelDirEnumSet getFromDirections() {
+    return new ChannelDirEnumSet(getAllChannels(), true);
   }
   
+  @Override
+  public ChannelDataSet getChannelsInToDirection(ChannelDirEnum dirTo1Value) {
+    return getChannelDataSet().getChannelsInToDirection(dirTo1Value);
+  }
+  
+  @Override
+  public ChannelDataSet getChannelsInToLane(ChannelLaneData laneTo) {
+    return getChannelDataSet().getChannelsInToLane(laneTo);
+  }
+
 /*
   public List<ChannelContraFlowDef> getAllContraFlowDefs() {
     ArrayList<ChannelContraFlowDef> result = new ArrayList<ChannelContraFlowDef>();
@@ -452,7 +511,7 @@ public class RawTrafficDataStation {
     return chID;
   }
 
-  class _ChangeChannel implements ChannelIDChange {
+  static class _ChangeChannel implements ChannelIDChange {
     private final RawTrafficDataStation station;
     private _ChangeChannel(RawTrafficDataStation parent) {
       station = parent;

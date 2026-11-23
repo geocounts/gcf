@@ -27,11 +27,11 @@ public class UserDefinedTallyField implements TallyCountField {
   private String key;
   private double minValue;
   
-  protected UserDefinedTallyField(String name) {
+  public UserDefinedTallyField(String name) {
     this(name, -Double.MAX_VALUE);
   }
   
-  protected UserDefinedTallyField(String name, double minValue) {
+  public UserDefinedTallyField(String name, double minValue) {
     this.key = name;
     this.minValue = minValue;
   }
@@ -85,10 +85,14 @@ public class UserDefinedTallyField implements TallyCountField {
   public boolean isWithinBounds(VehicleTallyRec tally) {
     return true;
   }
+  
+  @Override
+  public GCFieldType getFieldType() {
+    return isInteger() ? GCFieldType.LONG : GCFieldType.DOUBLE;
+  }
 
   private int decimalPlaces = 3;
   
-  @Override
   public boolean isInteger() {
     return decimalPlaces == 0;
   }

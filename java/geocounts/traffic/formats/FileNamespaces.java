@@ -24,6 +24,7 @@ package geocounts.traffic.formats;
  * @see EnumHeaderRecords#FN
  * @deprecated
  */
+@Deprecated
 public class FileNamespaces extends RawTrafficDataHeaderElement {
 
   @Override
@@ -43,6 +44,12 @@ public class FileNamespaces extends RawTrafficDataHeaderElement {
 
   public void copyFrom(FileNamespaces fn) {
     // this.tallytotal = fn.tallytotal != null ? fn.tallytotal : TallyFieldNamespaceEnum.userdefined;
+  }
+
+  @Override
+  public void clear() {
+    // TODO Auto-generated method stub
+    
   }
   
   /*

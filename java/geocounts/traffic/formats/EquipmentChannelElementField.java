@@ -33,6 +33,7 @@ public enum EquipmentChannelElementField {
    * <li>LL - Two loops</li>
    * <li>L - Single loop</li>
    * <li>TT - Two tubes</li>
+   * <li>W - Microwave Radar</li>
    * </ul>
    */
   sensortype {

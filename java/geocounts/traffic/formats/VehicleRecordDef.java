@@ -59,8 +59,8 @@ public class VehicleRecordDef extends RawTrafficDataHeaderElement implements Ite
     return false;
   }
   
-  public void removeField(ObservationField f) {
-    fields.remove(f);
+  public boolean removeField(ObservationField f) {
+    return fields.remove(f);
   }
 
   public int numberOfFields() {
@@ -76,18 +76,13 @@ public class VehicleRecordDef extends RawTrafficDataHeaderElement implements Ite
     return fields.iterator();
   }
   
+  @Override
   public void clear() {
     fields.clear();
   }
   
   public String toString(String delim) {
-    StringBuilder result = new StringBuilder();
-    for (int i=0; i<fields.size(); i++) {
-      if (i > 0)
-        result.append(delim);
-      result.append(fields.get(i).getId());
-    }
-    return result.toString();
+    return geocounts.traffic.formats.operators.DelimitedLineBuilder.idsToString(delim, fields);
   }
 
   @Override
@@ -104,7 +99,7 @@ public class VehicleRecordDef extends RawTrafficDataHeaderElement implements Ite
   } */
   
   public VehicleRec create(int channelID, long timeUTCNotAccountedFor) {
-    return VehicleRec.createNoTZ(channelID, timeUTCNotAccountedFor - SZ.getRecordedTimestampOffset());
+    return VehicleRec.createNoTZ(channelID, timeUTCNotAccountedFor);
   }
   
   @Override
@@ -142,7 +137,7 @@ public class VehicleRecordDef extends RawTrafficDataHeaderElement implements Ite
         boolean didAdd = addField( VehicleFieldsEnum.valueOf(data[idx]) );
         
       } catch (Exception ex) {
-        addField( new UserDefinedObservationField(data[idx]) );
+        addField( new UserDefinedObservationField(data[idx], GCFieldType.DOUBLE) );
       }
     }
   }

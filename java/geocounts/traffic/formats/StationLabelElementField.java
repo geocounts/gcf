@@ -18,6 +18,8 @@
  */
 package geocounts.traffic.formats;
 
+import geocounts.formats.units.UnitConverter;
+
 /**
  * Represents the type of labels each {@link StationLabels.StationLabelRec station label} can have
  * @since 1.44
@@ -26,6 +28,7 @@ package geocounts.traffic.formats;
  * @see Equipment
  */
 public enum StationLabelElementField {
+  
   /**
    * A general description. 
    * Use this if other label elements are not suited to the information.
@@ -48,15 +51,76 @@ public enum StationLabelElementField {
    */
   pathclass(false, true, true),
   /**
-   * The ID of a linear reference this object sits on. This can be paired with the pathdist
+   * The ID of a linear element this object is placed on. This is used in a Linear Referencing System. This can be paired with the {@link #pathdist}
    * @see #pathdist
+   * @see #pathlength
    */
   pathlrs(false, true, true),
   /**
-   * Linear distance. This information should match the pathlrs
+   * Linear distance, from the origin of an LRS element, this station is placed. (Also called a 'measure' field). This information should match the pathlrs and FU field.
    * @see #pathlrs
+   * @see #pathlength
    */
-  pathdist(false, true, true),
+  pathdist(false, true, true) {
+    @Override
+    public boolean isNumeric() {
+      return true;
+    }
+
+    @Override
+    public UnitConverter getUnitConverter(UnitsUsed FU) {
+      return FU.getLengthLong();
+    }
+  },
+  /**
+   * Linear distance, from the origin of an LRS element, the segment starts. {@link #pathlrsend} - {@link #pathlrsstart} should equal {@link #pathlength}
+   * @see #pathlrs
+   * @see #pathlength
+   * @since 1.510
+   */
+  pathlrsstart(false, true, true) {
+    @Override
+    public boolean isNumeric() {
+      return true;
+    }
+
+    @Override
+    public UnitConverter getUnitConverter(UnitsUsed FU) {
+      return FU.getLengthLong();
+    }
+  },
+  /**
+   * Linear distance, from the origin of an LRS element, the segment ends. {@link #pathlrsend} - {@link #pathlrsstart} should equal {@link #pathlength}
+   * @see #pathlrs
+   * @see #pathlength
+   * @since 1.510
+   */
+  pathlrsend(false, true, true) {
+    @Override
+    public boolean isNumeric() {
+      return true;
+    }
+    @Override
+    public UnitConverter getUnitConverter(UnitsUsed FU) {
+      return FU.getLengthLong();
+    }
+  },
+  /**
+   * Length of the linear element. This information should match the {@link #pathlrs} and FU field.
+   * @see #pathlrs
+   * @see #pathdist
+   */
+  pathlength(false, true, true) {
+    @Override
+    public boolean isNumeric() {
+      return true;
+    }
+
+    @Override
+    public UnitConverter getUnitConverter(UnitsUsed FU) {
+      return FU.getLengthLong();
+    }
+  },
   /**
    * The name of a region. For example, the name of a county or local government area
    */
@@ -66,6 +130,10 @@ public enum StationLabelElementField {
    * An urban area does not need a local government to exist.
    */
   urbanareaname(false, false, true),
+  /**
+   * The name of a zone. For example, a park or a parking lot.
+   */
+  zonename(false, false, true),
   /**
    * The name of a group to which this station belongs. For example, a group of similar stations.
    */
@@ -84,8 +152,19 @@ public enum StationLabelElementField {
   mapref(false, false, true),
   /**
    * A posted speed limit.
+   * @see SpeedLimit
    */
-  speedlimit(true, false, true),
+  speedlimit(true, false, true) {
+    @Override
+    public boolean isNumeric() {
+      return true;
+    }
+    
+    @Override
+    public UnitConverter getUnitConverter(UnitsUsed FU) {
+      return FU.getSpeed();
+    }
+  },
   /**
    * An exit number
    * @since 1.282
@@ -105,6 +184,17 @@ public enum StationLabelElementField {
     @Override
     public int getNumberOfFields() {
       return 2;
+    }
+  },
+  
+  /**
+   * An indicative pricing.
+   * @since 1.321
+   */
+  price(false, false, true) {
+    @Override
+    public boolean isNumeric() {
+      return true;
     }
   },
   
@@ -160,6 +250,10 @@ public enum StationLabelElementField {
     station = stn;
   }
   
+  public boolean isNumeric() {
+    return false;
+  }
+  
   public boolean hasMultipleFields() {
     return getNumberOfFields() > 1;
   }
@@ -188,5 +282,9 @@ public enum StationLabelElementField {
       return new String[0];
     String[] result = SL.getStationLabelFields(this);
     return result != null ? result : new String[0];
+  }
+  
+  public UnitConverter getUnitConverter(UnitsUsed FU) {
+    return null;
   }
 }

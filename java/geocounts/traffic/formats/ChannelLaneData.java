@@ -21,7 +21,8 @@ package geocounts.traffic.formats;
 /**
  * -1 = undefined<br />
  * 0 = combined road lanes. Examples: multiple lanes in the same direction, or N/S or E/W combined<br />
- * 1 - 31 = Individual lanes<br />
+ * 1 - 31 = Individual lanes
+ * @see ChannelLaneUsageType
  */
 public abstract class ChannelLaneData implements IdDesc, Comparable<ChannelLaneData> {
   public static ChannelLaneData undefined = new UndefinedLane();
@@ -59,7 +60,20 @@ public abstract class ChannelLaneData implements IdDesc, Comparable<ChannelLaneD
   public int compareTo(ChannelLaneData value) {
     return this.getCode() - value.getCode();
   }
-  
+
+  @Override
+  public boolean equals(Object o) {
+    if (o instanceof ChannelLaneData) {
+      ChannelLaneData other = (ChannelLaneData)o;
+      return equals(other.getCode());
+    }
+    return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return this.getCode();
+  }
 }
 
 class UndefinedLane extends ChannelLaneData {

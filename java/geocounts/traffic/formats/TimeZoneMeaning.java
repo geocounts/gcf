@@ -26,13 +26,26 @@ public enum TimeZoneMeaning implements IdDesc {
   /**
    * Time stamps in body records (V, T and M), and header record SR, indicate Universal Coordinated Time
    */
-  utc("UTC time");
+  utc("UTC time") {
+    @Override
+    public long getRecordedTimestampOffset(TimeZoneData data) {
+      return data.getTimeInMillis();
+    }
+  };
   
   private String desc;
   private TimeZoneMeaning(String d) {
     desc = d;
   }
-
+  
+  /**
+   * Number of milliseconds to add to a time stamp read from the file
+   * @return Number of milliseconds
+   */
+  public long getRecordedTimestampOffset(TimeZoneData data) {
+    return 0;
+  }
+  
   @Override
   public String getId() {
     return name();

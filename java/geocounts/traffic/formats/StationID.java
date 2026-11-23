@@ -18,29 +18,51 @@
  */
 package geocounts.traffic.formats;
 
+import java.io.Serializable;
+
 /**
  * @see EnumHeaderRecords#SI
+ * @see GeoType
  */
-public class StationID {
-  static final char[] illegalChars = new char[]{RawTrafficDataFilename.PART_DELIM, '\\', '/', '.', '@'};
+public class StationID extends RawTrafficDataHeaderElement implements Serializable {
+  private static final long serialVersionUID = 1L;
+
+  static final char[] illegalChars = new char[]{RawTrafficDataFilename.PART_DELIM, '\\', '/', '.', ',', '*', '@', '\'', '"', '\r', '\n', '\t'};
   
   private String id;
+  
+  /**
+   * This is never null
+   * @see GeoType
+   */
+  public GeoType geoType = GeoType.station;
   
   public boolean isSet() {
     return id != null;
   }
   
-  public void set(String value) {
-    if (value == null) {
-      id = null;
-      return;
-    }
+  @Override
+  public void clear() {
+    id = null;
+    geoType = GeoType.station;
+  }
+  
+  public boolean set(String value) {
+    clear();
+    if (value == null)
+      return false;
+
+    value = value.trim();
+    if (value.length() == 0)
+      return false;
+    
     // replace illegal characters
     final char replaceWith = '-';
     String sid = value.toString();
     for (char c: illegalChars)
       sid = sid.replace(c, replaceWith);
     id = sid;
+    return true;
   }
   
   public String getValue() {
@@ -49,10 +71,36 @@ public class StationID {
   
   public final void copyFrom(StationID other) {
     this.id = other.id;
+    this.geoType = other.geoType;
   }
   
   @Override
   public String toString() {
     return getValue();
+  }
+
+  @Override
+  public EnumHeaderRecords getSourceRecord() {
+    return EnumHeaderRecords.SI;
+  }
+
+  @Override
+  protected String[] write() {
+    if (id == null)
+      return null;
+    
+    if (geoType != GeoType.station)
+      return new String[]{id, geoType.name()};
+
+    return new String[]{id};
+  }
+
+  @Override
+  protected void read(String[] data) {
+    if (data.length == 0)
+      return;
+    this.set(data[0]);
+    if (data.length > 1)
+      geoType = GeoType.valueOf(data[1]);
   }
 }

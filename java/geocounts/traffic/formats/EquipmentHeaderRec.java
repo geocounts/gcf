@@ -47,7 +47,7 @@ public class EquipmentHeaderRec extends RawTrafficDataHeaderElement {
 
   protected EquipmentHeaderRec(String f, int channelID, Object text) {
     rec = parseChannelRec(channelID, f);
-    rec.text = text != null ? text.toString() : null;
+    rec.setText(text);
   }
   
   protected EquipmentHeaderRec() {}
@@ -57,26 +57,43 @@ public class EquipmentHeaderRec extends RawTrafficDataHeaderElement {
   }
 
   @Override
+  public void clear() {
+  }
+
+  @Override
   public final EnumHeaderRecords getSourceRecord() {
     return EnumHeaderRecords.SE;
   }
   
 //  protected abstract void copyFrom(EquipmentRec other);
   
+  private Object toObject(String[] data) {
+    if (data.length == 4)
+      return data[3];
+    String[] result = new String[data.length-3];
+    for (int i=0; i<result.length; i++)
+      result[i] = data[3+i];
+    return result;
+  }
+  
   @Override
   protected void read(String[] data) {
-    LabelElementType elementType = LabelElementType.valueOf(data[0]);
-    switch (elementType) {
+    LabelElementType.Impl elementType = LabelElementType.valueOf(data[0]);
+    switch (elementType.getAggregation()) {
     case station: {
       rec = parseStationRec(data[2]);
       if (data.length > 3)
-        rec.text = data[3];
+        rec.setText(toObject(data));
+      else
+        rec.setText(null);
       break;
     }
     case channel: {
       rec = parseChannelRec(Integer.parseInt(data[1]), data[2]);
       if (data.length > 3)
-        rec.text = data[3];
+        rec.setText(toObject(data));
+      else
+        rec.setText(null);
       break;
     }
     default: {
@@ -86,11 +103,20 @@ public class EquipmentHeaderRec extends RawTrafficDataHeaderElement {
   }
   
   public final static String[] write(EquipmentRecBase rec) {
-    String[] result = new String[4];
+    if (rec.textItems == null) {
+      String[] result = new String[4];
+      result[0] = rec.getElementType().name();
+      result[1] = Integer.toString(rec.ElementID);
+      result[2] = rec.getFieldID();
+      return result;
+    }
+
+    String[] result = new String[3 + rec.textItems.length];
     result[0] = rec.getElementType().name();
     result[1] = Integer.toString(rec.ElementID);
     result[2] = rec.getFieldID();
-    result[3] = rec.text;
+    for (int i=0; i<rec.textItems.length; i++)
+      result[3+i] = rec.textItems[i];
     return result;
   }
 

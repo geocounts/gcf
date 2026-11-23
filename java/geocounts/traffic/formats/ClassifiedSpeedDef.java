@@ -181,5 +181,15 @@ public final class ClassifiedSpeedDef extends ClassifiedDef {
   public void resetCounts(VehicleTallyRec tally) {
     tally.countsSpeed = new int[this.getNumberOfBinsInRecord()];
   }
+  
+  public boolean matches(ClassifiedSpeedDef other) {
+    if (this.numberOfBins != other.numberOfBins)
+      return false;
+    if (this.firstBinStepKph != other.firstBinStepKph)
+      return false;
+    if (this.otherBinStepKph != other.otherBinStepKph)
+      return false;
+    return true;
+  }
 
 }

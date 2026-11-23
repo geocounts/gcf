@@ -30,6 +30,13 @@ import geocounts.formats.units.*;
  */
 public class UnitsUsed extends RawTrafficDataHeaderElement {
   /**
+   * Creates the units as {@link SystemOfUnits#metric metric}
+   */
+  private UnitsUsed() {
+//    SystemOfUnits.metric.set(this);
+  }
+  
+  /**
    * {@link EnumSpeedUnit} Never null
    */
   private EnumSpeedUnit speed;
@@ -81,11 +88,10 @@ public class UnitsUsed extends RawTrafficDataHeaderElement {
    * @since 1.28
    */
   public EnumGPS gps = EnumGPS.llh;
-  /**
-   * Creates the units as {@link SystemOfUnits#metric metric}
-   */
-  public UnitsUsed() {
-    SystemOfUnits.metric.set(this);
+  
+  @Override
+  public void clear() {
+    // do nothing
   }
 
   @Override
@@ -122,7 +128,6 @@ public class UnitsUsed extends RawTrafficDataHeaderElement {
   
   /**
    * Short hand for {@link #metric} or {@link #uscustomary} or {@link #uk}
-   * @author scropley
    *
    */
   public enum SystemOfUnits implements IdDesc {
@@ -219,6 +224,12 @@ public class UnitsUsed extends RawTrafficDataHeaderElement {
     @Override
     public String getDescription() {
       return name();
+    }
+    
+    public final UnitsUsed createDefault() {
+      UnitsUsed result = new UnitsUsed();
+      this.set(result);
+      return result;
     }
   }
   

@@ -18,11 +18,33 @@
  */
 package geocounts.traffic.formats;
 
+import java.util.function.Consumer;
+import java.util.function.ToLongFunction;
+
 public class DecodingOptions {
   
   public DecodingOptions() {
     setUseStrict();
   }
+  
+  private boolean addBody = true;
+  /**
+   * If false, only load the header block
+   */
+  public boolean addBody() {
+    return addBody;
+  }
+  
+  public void setAddBody(boolean value) {
+    addBody = value;
+  }
+  
+  /**
+   * Gets offset in milliseconds based on a station record. 
+   * Can be used to convert from the UTC timezone, or make any other timing adjustment.
+   * @see TimeZoneData
+   */
+  public ToLongFunction<RawTrafficDataStation> timeOffset;
   
   public boolean assertTFValues;
   
@@ -38,4 +60,31 @@ public class DecodingOptions {
     assertTSBins = true;
     assertTLBins = true;
   }
+  
+  /**
+   * 
+   * @return A correction to add to the timestamps
+   */
+  public long getTimestampTimeCorrection(long rawTime, RawTrafficDataStation S) {
+    if (timeOffset == null)
+      return 0;
+    return timeOffset.applyAsLong(S);
+  }
+
+  public long getTallyTimeCorrection(long rawTime, RawTrafficDataStation S) {
+    return 0;
+  }
+  
+  public void updateTimeForDaylightSavings(RawTrafficDataTrafficElement target) {
+    // COMPLETE THIS TO UPDATE FOR DAYLIGHT SAVINGS TIME
+  }
+  
+  public boolean addTallies = true;
+  public boolean addObservations = true;
+  public boolean addMonitoringEvents = true;
+  /**
+   * This is called immediately after decoding a vehicle record and before it is sent further. 
+   * It could be used to change the channelID for a vehicle traveling in reverse
+   */
+  public Consumer<VehicleRec> observationRule;
 }

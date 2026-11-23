@@ -18,12 +18,18 @@
  */
 package geocounts.traffic.formats;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 /**
- * 
+ * Channels represent a common, linear movement of counted information
+ * @see RawTrafficDataStation
  * @see EnumHeaderRecords#SC
- *
+ * @see ChannelDataToStringEnum
  */
-public class ChannelData extends RawTrafficDataHeaderElement implements Comparable<ChannelData> {
+public class ChannelData extends RawTrafficDataHeaderElement implements Comparable<ChannelData>, CoordinateObject {
   public static final int MAX_CHANNELID = 99;
   
   private int channelID;
@@ -37,6 +43,14 @@ public class ChannelData extends RawTrafficDataHeaderElement implements Comparab
     if ((id < 0) || (id > MAX_CHANNELID))
       throw new ArrayIndexOutOfBoundsException(id);
     channelID = id;
+  }
+  
+  public RawTrafficDataStation getHeader() {
+    return header;
+  }
+
+  @Override
+  public void clear() {
   }
 
   @Override
@@ -73,24 +87,126 @@ public class ChannelData extends RawTrafficDataHeaderElement implements Comparab
   }
   
   /**
-   * This never returns null
+   * This may return null
+   * @return The {@link StationLabels.LabelSetForElement} or null if none are set
    */
   public StationLabels.LabelSetForElement getLabels() {
     return header.SL.getChannelLabel(this.channelID);
   }
   
   /**
-   * The global position of this channel
+   * The line or point of the channel
+   * @see ChannelDataGeometry
    */
-  public final LatLongCoordinate coordinate = new LatLongCoordinate();
+  private final ChannelDataGeometry geometry = new ChannelDataGeometry(this);
+
+  /**
+   * Similar to StationShape
+   */
+  public static class ChannelDataGeometry implements Serializable, Iterable<LatLongCoordinate> {
+    private static final long serialVersionUID = 1L;
+    
+    private final List<LatLongCoordinate> points = new ArrayList<LatLongCoordinate>();
+    private boolean isSet = false;
+
+    private final ChannelData parent;
+    private ChannelDataGeometry(ChannelData cd) {
+      parent = cd;
+    }
+
+    public boolean isSet() {
+      return isSet;
+    }
+
+    public void addPoint(LatLongCoordinate c) {
+      points.add(c);
+      if (!isSet && c.isSet())
+        isSet = true;
+    }
+    
+    public int size() {
+      return points.size();
+    }
+    
+    public final LatLongCoordinate getCentroid() {
+      return CoordinateObjectComputation.getCentroid(points);
+    }
+    
+    public double[] toLatLngHeight() {
+      return getCentroid().toLatLngHeight();
+    }
+
+    public void setTo(double lat, double lng) {
+      setTo(new LatLongCoordinate(lat, lng));
+    }
+    
+    public void setTo(LatLongCoordinate other) {
+      points.clear();
+      isSet = false;
+      addPoint(other);
+    }
+    
+    public void setPoints(Iterable<LatLongCoordinate> coords) {
+      points.clear();
+      isSet = false;
+      for (LatLongCoordinate c: coords)
+        addPoint(c);
+    }
+
+    public void copyFrom(ChannelDataGeometry geometry) {
+      points.clear();
+      points.addAll(geometry.points);
+      isSet = geometry.isSet;
+    }
+
+    @Override
+    public Iterator<LatLongCoordinate> iterator() {
+      return points.iterator();
+    }
+
+    /**
+     * @param index
+     * @return The {@link LatLongCoordinate} at the index, or null
+     */
+    public LatLongCoordinate getPoint(int index) {
+      try {
+        return points.get(index);
+      } catch (Exception e) {
+        return null;
+      }
+    }
+    
+    public LatLongCoordinate getEndPoint() {
+      return getPoint(points.size()-1);
+    }
+  }
   
   /**
-   * Information about where the counted objects are heading to.<br />
-   * If describing a turning movement, the {@link DirInfo#dir dir} in this case represents the direction an observer must face to see the departing object.<br />
+   * The global position of this channel
+   * @see RawTrafficDataStation#SG
+   */
+  public ChannelDataGeometry getGeometry() {
+    return geometry;
+  }
+  
+  @Override
+  public LatLongCoordinate getCoordinate() {
+    return geometry.getCentroid();
+  }
+  
+  /**
+   * Information about where the counted objects are heading to, after passing the observer.<br />
+   * If describing a turning movement, this {@link DirInfo#getDir() direction} represents the direction an observer must face to see the object after it passes.<br />
    * This is never null.
    */
   public final ToFromInfo to1 = new ToFromInfo();
+  
+  /**
+   * A second direction the object may depart towards.
+   * Use this to describe a channel at an intersection that cannot distinguish a through movement from a turn.
+   */
   public final DirInfo to2 = new DirInfo();
+  
   public final DirInfo to3 = new DirInfo();
   
   /**
@@ -134,8 +250,9 @@ public class ChannelData extends RawTrafficDataHeaderElement implements Comparab
   }
   
   /**
-   * Information about where the counted objects are coming from.<br />
-   * If describing a turning movement, the {@link ToFromInfo#dir dir} in this case represents the direction an observer must face to see the approaching object.<br />
+   * Information about where the counted objects are approaching from, relative to the observer.<br />
+   * This {@link ToFromInfo#getDir() direction} represents the direction an observer must face to see the approaching object.<br />
+   * For example, if vehicles are approaching an intersection from its South side, this 'from' direction is South, even though the vehicles are initially North 'bound'.
    * This is never null.
    */
   public final FromInfo from = new FromInfo();
@@ -159,8 +276,9 @@ public class ChannelData extends RawTrafficDataHeaderElement implements Comparab
     to1.setDir( turningMovement.compute(from.getDir(), true) );
   }
   
-  public class DirInfo {
-
+  public static class DirInfo implements Serializable {
+    private static final long serialVersionUID = 1L;
+    
     /**
      * Never null
      */
@@ -183,7 +301,9 @@ public class ChannelData extends RawTrafficDataHeaderElement implements Comparab
     }
   }
   
-  public class ToFromInfo extends DirInfo implements Comparable<ToFromInfo> {
+  public static class ToFromInfo extends DirInfo implements Serializable, Comparable<ToFromInfo> {
+    private static final long serialVersionUID = 1L;
+    
     /**
      * Never null
      */
@@ -232,7 +352,9 @@ public class ChannelData extends RawTrafficDataHeaderElement implements Comparab
   }
   
 
-  public class FromInfo extends ToFromInfo {
+  public static class FromInfo extends ToFromInfo {
+    private static final long serialVersionUID = 1L;
+
     private FromInfo() {}
 
     public void setDir(int code) {
@@ -243,7 +365,7 @@ public class ChannelData extends RawTrafficDataHeaderElement implements Comparab
   
   @Override
   public String[] write() {
-    String[] dirInfo = new String[10];
+    String[] dirInfo = new String[100];
     dirInfo[0] = Integer.toString(channelID);
     int maxPos = 1;
     if (to1.isDefined() || from.isDefined()) {
@@ -262,11 +384,14 @@ public class ChannelData extends RawTrafficDataHeaderElement implements Comparab
       if (from.laneType != ChannelLaneUsageType.undefined)
         maxPos = 7;
     }
-    if (coordinate.isSet()) {
-      dirInfo[7] = Double.toString(coordinate.latitude);
-      dirInfo[8] = Double.toString(coordinate.longitude);
-      dirInfo[9] = Double.toString(coordinate.height);
-      maxPos = 10;
+    if (geometry.isSet()) {
+      maxPos = 7;
+      for (LatLongCoordinate c: geometry.points) {
+        dirInfo[maxPos]   = Double.toString(c.getLatitude());
+        dirInfo[maxPos+1] = Double.toString(c.getLongitude());
+        dirInfo[maxPos+2] = Double.toString(c.altitude);
+        maxPos += 3;
+      }
     }
     
     String[] result = new String[maxPos];
@@ -342,20 +467,28 @@ public class ChannelData extends RawTrafficDataHeaderElement implements Comparab
     
     if (data.length == 7) return;
     
-    try {
-      coordinate.latitude = Double.parseDouble(data[7]);
-    } catch (Exception expected) {}
-    try {
-      coordinate.longitude = Double.parseDouble(data[8]);
-    } catch (Exception expected) {}
-    try {
-      coordinate.height = Double.parseDouble(data[9]);
-    } catch (Exception expected) {}
+    for (int i=7; i<data.length; i+=3) {
+      double lat = 0;
+      double lng = 0;
+      try {
+        lat = Double.parseDouble(data[i]);
+      } catch (Exception expected) {}
+      try {
+        lng = Double.parseDouble(data[i+1]);
+      } catch (Exception expected) {}
+      LatLongCoordinate c = new LatLongCoordinate(lat, lng);
+      try {
+        c.altitude = Double.parseDouble(data[i+2]);
+      } catch (Exception expected) {}
+      geometry.addPoint(c);
+    }
   }
   
+  @Override
   public String toString() {
-    return this.channelID + " " + this.from.dir + "[" + from.lane + "]" + " -> " + to1.dir + "[" + to1.lane + "]";
+    return ChannelDataToStringEnum.Ch_DirFromLane_DirToLane.apply(this);
   }
+  
 
   @Override
   public boolean equals(Object obj) {

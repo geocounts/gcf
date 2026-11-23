@@ -24,6 +24,7 @@ import java.util.List;
 
 /**
  * Vehicle record - axle fields
+ * @see AxleFieldsEnum
  */
 public class AxleRecordDef extends RawTrafficDataHeaderElement implements Iterable<AxleFieldsEnum> {
 
@@ -41,8 +42,8 @@ public class AxleRecordDef extends RawTrafficDataHeaderElement implements Iterab
     return false;
   }
 
-  public void removeField(AxleFieldsEnum f) {
-    fields.remove(f);
+  public boolean removeField(AxleFieldsEnum f) {
+    return fields.remove(f);
   }
   
   public int numberOfFields() {
@@ -54,18 +55,13 @@ public class AxleRecordDef extends RawTrafficDataHeaderElement implements Iterab
     return fields.iterator();
   }
   
+  @Override
   public void clear() {
     fields.clear();
   }
   
   public String toString(String delim) {
-    StringBuilder result = new StringBuilder();
-    for (int i=0; i<fields.size(); i++) {
-      if (i > 0)
-        result.append(delim);
-      result.append(fields.get(i).getId());
-    }
-    return result.toString();
+    return geocounts.traffic.formats.operators.DelimitedLineBuilder.idsToString(delim, fields);
   }
 
   @Override
@@ -110,8 +106,16 @@ public class AxleRecordDef extends RawTrafficDataHeaderElement implements Iterab
     mergeFrom(other);
   }
 
-  public void mergeFrom(AxleRecordDef other) {
+  /**
+   * 
+   * @return The number of merged fields
+   */
+  public int mergeFrom(AxleRecordDef other) {
+    int mergedFields = 0;
     for (AxleFieldsEnum e: other.fields)
-      addField(e);
+      if (addField(e))
+        mergedFields++;
+    
+    return mergedFields;
   }
 }

@@ -18,14 +18,18 @@
  */
 package geocounts.formats.io;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 import geocounts.traffic.formats.*;
-import geocounts.traffic.formats.Equipment.EquipmentRecBase;
 
 /**
  * Writes the GEOCOUNTS text file from raw count data. The simplest method to call is {@link #writeData(File, RawTrafficData)}
@@ -45,6 +49,10 @@ public class RawTrafficDataFileTXTEncoder extends RawTrafficDataFileEncoder {
 
   private RawTrafficDataFileTXTEncoder(PrintWriter out, boolean shouldCloseWriter) throws Exception {
     super(out, shouldCloseWriter);
+  }
+  
+  public static RawTrafficDataFileDecoderCallback newEncoder(File cache) throws Exception {
+    return new RawTrafficDataFileDecoderCallbackFileImpl(cache);
   }
   
   /**
@@ -67,6 +75,18 @@ public class RawTrafficDataFileTXTEncoder extends RawTrafficDataFileEncoder {
       out.close();
     }
     return bos.toString();
+  }
+  
+  public static List<String> toFileHeaderStrings(RawTrafficDataHeader header) throws Exception {
+    ArrayList<String> result = new ArrayList<String>();
+    String sttr = toFileHeader(header);
+    BufferedReader reader = new BufferedReader(new StringReader(sttr));
+    String l = reader.readLine();
+    while (l != null) {
+      result.add(l);
+      l = reader.readLine();
+    }
+    return result;
   }
   
   /**
@@ -119,15 +139,20 @@ public class RawTrafficDataFileTXTEncoder extends RawTrafficDataFileEncoder {
       close();
     }
   }
+  
+  private List<TallyPartOrder> computeTallyParts(RawTrafficDataHeader header) {
+    ArrayList<TallyPartOrder> result = new ArrayList<TallyPartOrder>();
+    result.addAll(header.T.TO.getAll());
+    if (result.size() == 0) {
+      TallyPartOrderDef.setDefaultPartOrder(header.T, result);
+    }
+    return result;
+  }
 
   @Override
   protected void writeBody(RawTrafficDataFilename fileName, RawTrafficData data) throws Exception {
     // get the tally parts being set. This is deduced from the header
-    ArrayList<TallyPartOrder> tallyPartsToSet = new ArrayList<TallyPartOrder>();
-    tallyPartsToSet.addAll(data.header.T.TO.getAll());
-    if (tallyPartsToSet.size() == 0) {
-      TallyPartOrderDef.setDefaultPartOrder(data.header.T, tallyPartsToSet);
-    }
+    List<TallyPartOrder> tallyPartsToSet = computeTallyParts(data.header);
     
     // print tally records
     for (VehicleTallyRec tally: data.tallies()) {
@@ -178,12 +203,12 @@ public class RawTrafficDataFileTXTEncoder extends RawTrafficDataFileEncoder {
     }
 
     // equipment (station)
-    for (EquipmentRecBase o: header.S.SE.allForStation()) {
+    for (Equipment.EquipmentRecBase o: header.S.SE.allForStation()) {
       printHeaderLine(EnumHeaderRecords.SE, EquipmentHeaderRec.write(o), false);
     }
     
     // equipment (channel)
-    for (EquipmentRecBase o: header.S.SE.allForChannels()) {
+    for (Equipment.EquipmentRecBase o: header.S.SE.allForChannels()) {
       printHeaderLine(EnumHeaderRecords.SE, EquipmentHeaderRec.write(o), false);
     }
     /*
@@ -219,66 +244,185 @@ public class RawTrafficDataFileTXTEncoder extends RawTrafficDataFileEncoder {
   public String toVehicle(RawTrafficDataHeader header, VehicleRec veh) throws Exception {
     StringBuilder result = new StringBuilder();
     result.append(EnumRecordType.V.getId());
-    result.append(';');
-    result.append(header.getObservationDateFormat().format(veh.getTime()));
-    result.append(',');
+    result.append(header.F.FL.BODY_PART);
+    result.append(header.F.FL.formatBodyEventDateTime(veh.getTime()));
+    result.append(header.F.FL.BODY_FIELD);
     result.append(veh.channelID);
-    result.append(';');
+    result.append(header.F.FL.BODY_PART);
     // vehicle subfields
     int i=0;
     for (ObservationField f: header.VV) {
       if (i > 0)
-        result.append(',');
+        result.append(header.F.FL.BODY_FIELD);
       result.append(f.get(veh, header.F.FU));
       i++;
     }
-    result.append(';');
+    result.append(header.F.FL.BODY_PART);
     // axles
-    if (header.VA.fields.size() > 0) {
-      for (VehicleRec.AxleRec axl: veh.axles) {
+    if (header.VA.isRecording()) {
+      for (AxleRec axl: veh.axles) {
         i=0;
         for (; i<header.VA.numberOfFields(); i++) {
           if (i > 0)
-            result.append(',');
+            result.append(header.F.FL.BODY_FIELD);
           result.append(header.VA.fields.get(i).get(axl, header.F.FU));
         }
-        result.append(';');
+        result.append(header.F.FL.BODY_PART);
+      }
+      
+      // axle groups - only if there are axles and ACTUAL groupings
+      if (header.VG.isRecording() && (veh.axleGroups != null)) {
+        result.append(RawTrafficDataFileTXTDecoder.GROUP_PARTS_DELIM);
+        for (AxleGroupRec axg: veh.axleGroups) {
+          result.append(header.F.FL.BODY_FIELD);
+          result.append(axg.axlesInGroup.size());
+        }
+        result.append(header.F.FL.BODY_PART);
+        
+        for (AxleGroupRec axg: veh.axleGroups) {
+          i=0;
+          for (; i<header.VG.numberOfFields(); i++) {
+            if (i > 0)
+              result.append(header.F.FL.BODY_FIELD);
+            result.append(header.VG.fields.get(i).get(axg, header.F.FU));
+          }
+          result.append(header.F.FL.BODY_PART);
+        }
       }
     }
+    
     return result.toString();
   }
   
+  /**
+   * 
+   * @see RawTrafficDataFileTXTDecoder#decodeTallyRec(String, RawTrafficDataHeader)
+   */
   protected String toTally(RawTrafficDataHeader header, VehicleTallyRec tally, Collection<TallyPartOrder> tallyPartsToSet) throws Exception {
     StringBuilder result = new StringBuilder();
     result.append(EnumRecordType.T.getId());
-    result.append(';');
+    result.append(header.F.FL.BODY_PART);
     // fixed referencing data subfields
-    result.append(header.getTallyDateFormat().format(tally.getTime()));
-    result.append(',');
-    result.append(tally.period);
-    result.append(',');
+    result.append(header.F.FL.formatBodyTallyDateTime(tally.getTime())); // getTallyDateFormat().format(tally.getTime()));
+    result.append(header.F.FL.BODY_FIELD);
+    result.append(tally.getHourlySubPeriod());
+    result.append(header.F.FL.BODY_FIELD);
     result.append(tally.channelID);
-    result.append(';');
+    result.append(header.F.FL.BODY_PART);
 
     for (TallyPartOrder p : tallyPartsToSet) {
       p.encode(tally, header, result);
-      result.append(';');
+      result.append(header.F.FL.BODY_PART);
     }
     
     return result.toString();
   }
 
-  private String toMonitoringEvent(RawTrafficDataHeader header, MonitoringEventRec event) {
+  private String toMonitoringEvent(RawTrafficDataHeader header,  MonitoringEventRec event) {
     StringBuilder result = new StringBuilder();
     result.append(EnumRecordType.M.getId());
-    result.append(';');
-    result.append(header.getObservationDateFormat().format(event.getTime()));
-    result.append(';');
+    result.append(header.F.FL.BODY_PART);
+    result.append(header.F.FL.formatBodyEventDateTime(event.getTime())); // getObservationDateFormat().format(event.getTime()));
+    result.append(header.F.FL.BODY_PART);
     result.append(event.getEventTypeID());
-    result.append(';');
+    result.append(header.F.FL.BODY_PART);
     result.append(RawFmtUtils.notNull(event.text));
-    result.append(';');
+    result.append(header.F.FL.BODY_PART);
     return result.toString();
   }
 
+  
+  static class RawTrafficDataFileDecoderCallbackFileImpl implements RawTrafficDataFileDecoderCallback {
+    final RawTrafficDataFileTXTEncoder bodyEncoder;
+    final File bodyFile;
+    final File resultFile;
+    
+    List<TallyPartOrder> tallyPartsToSet;
+    RawTrafficDataHeader h;
+    
+    RawTrafficDataFileDecoderCallbackFileImpl(File f) throws Exception {
+      bodyFile = new File(f.getParentFile(), f.getName() + ".body");
+      if (bodyFile.exists())
+        throw new IOException("File exists: " + bodyFile.getName());
+      resultFile = f;
+      bodyEncoder = new RawTrafficDataFileTXTEncoder(bodyFile);
+    }
+    
+    @Override
+    public synchronized void close() throws Exception {
+      try {
+        // merge header and body into the output
+        bodyEncoder.pw.flush();
+        bodyEncoder.close();
+
+        if (h != null) {
+          PrintWriter output = new PrintWriter(resultFile);
+          try {
+            for (String s: RawTrafficDataFileTXTEncoder.toFileHeaderStrings(h))
+              output.println(s);
+            copyAsText(bodyFile, output);
+          } finally {
+            output.close();
+          }
+        }
+      } finally {
+        bodyFile.delete();
+      }
+    }
+
+    /**
+     * Copied from CopyUtils.copyAsText
+     * @throws IOException
+     */
+    private long copyAsText(File input, java.io.Writer out) throws IOException {
+      long result = 0;
+      
+      FileReader fis = new FileReader(input);
+      try {
+        final char[] cbuf = new char[1024*256];
+        int count = fis.read(cbuf);
+        while (count != -1) {
+          out.write(cbuf, 0, count);
+          out.flush();
+          result += count;
+          count = fis.read(cbuf);
+        }
+      } finally {
+        fis.close();
+      }
+      
+      return result;
+    }
+    
+    @Override
+    public boolean onHeader(RawTrafficDataHeader header) {
+      h = header;
+      tallyPartsToSet = bodyEncoder.computeTallyParts(h);
+      return true;
+    }
+
+    @Override
+    public RawTrafficDataHeader getHeader() {
+      return h;
+    }
+
+    @Override
+    public synchronized boolean addTally(VehicleTallyRec tally) throws Exception {
+      bodyEncoder.println(bodyEncoder.toTally(h, tally, tallyPartsToSet));
+      return true;
+    }
+
+    @Override
+    public synchronized boolean addObservation(VehicleRec veh) throws Exception {
+      bodyEncoder.println(bodyEncoder.toVehicle(h, veh));
+      return true;
+    }
+    
+    @Override
+    public synchronized boolean addMonitoringEvent(MonitoringEventRec event) throws Exception {
+      bodyEncoder.println(bodyEncoder.toMonitoringEvent(h, event));
+      return true;
+    }
+    
+  }
 }

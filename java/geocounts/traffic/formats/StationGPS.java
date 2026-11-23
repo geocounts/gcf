@@ -28,16 +28,21 @@ import geocounts.formats.units.EnumGPS;
  * @see EnumHeaderRecords#SG
  * @see StationShape
  */
-public class StationGPS extends RawTrafficDataHeaderElement {
+public class StationGPS extends RawTrafficDataHeaderElement implements CoordinateObject {
   /**
    * @since 1.12
    */
   public final LatLongCoordinate point = new LatLongCoordinate();
   
+  @Override
+  public LatLongCoordinate getCoordinate() {
+    return point;
+  }
+  
   public void setLatLng(double[] latlng) {
-    point.latitude = latlng[0];
-    point.longitude = latlng[1];
-    point.height = latlng.length > 2 ? latlng[2] : 0;
+    point.setLatLng(latlng[0], latlng[1]);
+    point.altitude  = latlng.length > 2 ? latlng[2] : 0;
+    point.direction = latlng.length > 3 ? latlng[3] : 0;
   }
 
   @Override
@@ -58,25 +63,33 @@ public class StationGPS extends RawTrafficDataHeaderElement {
    * @since 1.9944
    */
   public void toMap(Map<String, Object> result) {
-    result.put("SG_latitude", this.point.latitude);
-    result.put("SG_longitude", this.point.longitude);
-    result.put("SG_height", this.point.height);
+    result.put("SG_latitude",  this.point.getLatitude());
+    result.put("SG_longitude", this.point.getLongitude());
+    result.put("SG_altitude",  this.point.altitude);
+    result.put("SG_direction", this.point.direction);
   }
 
   @Override
   public void read(String[] data) {
+    clear();
     if (data == null)
       return;
-    
-    point.clear();
     EnumGPS.llh.parse(data, point);
   }
 
   @Override
   protected String[] write() {
-    if (!point.isSet() || (Math.abs(point.latitude) > 90) || (Math.abs(point.longitude) > 180))
+    // dont write invalid point
+    if ((Math.abs(point.getLatitude()) > 90) || (Math.abs(point.getLongitude()) > 180))
+      return null;
+    // dont write a point that is not set
+    if ((point.getLatitude() == 0) && (point.getLongitude() == 0))
       return null;
     return EnumGPS.llh.format(point);
   }
 
+  @Override
+  public void clear() {
+    point.clear();
+  }
 }

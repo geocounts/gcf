@@ -30,10 +30,10 @@ public enum EnumMassUnit implements UnitConverter {
    */
   lb(RawFmtUtils.POUNDS_PER_KILOGRAM);
 
-  private final double TO_KG;
+  private final double TO_NATIVE;
 
-  private EnumMassUnit(double tokg) {
-    this.TO_KG = tokg;
+  private EnumMassUnit(double toNtv) {
+    this.TO_NATIVE = toNtv;
   }
 
   @Override
@@ -43,12 +43,12 @@ public enum EnumMassUnit implements UnitConverter {
 
   @Override
   public double toMetric(double nativeValue) {
-    return nativeValue*TO_KG;
+    return nativeValue/TO_NATIVE;   // converts to kg
   }
 
   @Override
-  public double toNative(double metricValue) {
-    return metricValue/TO_KG;
+  public double toNative(double metricKgValue) {
+    return metricKgValue*TO_NATIVE; // converts to native eg lb
   }
   
   @Override

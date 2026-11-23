@@ -19,17 +19,22 @@
 package geocounts.traffic.formats;
 
 /**
- * Versioning
- *
+ * Versioning and initialization
  */
-public class FORMAT_VERSION {
+public final class FORMAT_VERSION {
+  public final static int MAJOR_VERSION = 2;
+  
   /**
-   * Version of the raw count API
+   * Version of the GC Format API
    */
-  public final static String RAWCOUNT_VERSION = "1.312";
+  public final static String RAWCOUNT_VERSION = "1.52";
   /**
    * Version of this java API code
    */
-  public final static double API_VERSION = 2.001;
+  public final static double API_VERSION = 2.30;
+  
+  public static void addWKClassificationSystemNameSynonym(String synonym, WKClassificationSystemName value) {
+    WKClassificationSystemName.synonyms_lwrcase.put(synonym.toLowerCase(), value);
+  }
 
 }

@@ -22,6 +22,7 @@ package geocounts.traffic.formats;
  * Typical fields included in the road traffic monitoring
  * @see TallyCountDef
  * @see VehicleFieldsEnum
+ * @see UserDefinedTallyFields
  */
 public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
   // aadtdh_3_22 traffic volumes where 3 = DOW (0-6) and 23 = hour (0-23). See https://geocounts.com/visual/monthhour.jsp?projectid=1463843171844&stationid=121-5452
@@ -30,7 +31,7 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
   /**
    * Count of all motorized vehicles
    */
-  motorized("Motorized vehicles") {
+  motorized("Motorized vehicles", GCFieldType.INT) {
 
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
@@ -46,11 +47,6 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     protected void doAdd(double value, TrafficMonitoringTallyCountFields result) throws Exception {
       result.totalMotorized += (long)value;
     }
-
-    @Override
-    public boolean isInteger() {
-      return true;
-    }
     
     @Override
     public boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
@@ -65,7 +61,7 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
   /**
    * Count of pedestrians
    */
-  peds("Pedestrians") {
+  peds("Pedestrians", GCFieldType.INT) {
 
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
@@ -81,11 +77,6 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     protected void doAdd(double value, TrafficMonitoringTallyCountFields result) throws Exception {
       result.totalPedestrians += (long)value;
     }
-
-    @Override
-    public boolean isInteger() {
-      return true;
-    }
     
     @Override
     public boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
@@ -100,7 +91,7 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
   /**
    * Count of bicycles
    */
-  bike("Bicycles") {
+  bike("Bicycles", GCFieldType.INT) {
 
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
@@ -116,11 +107,6 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     protected void doAdd(double value, TrafficMonitoringTallyCountFields result) throws Exception {
       result.totalBicycles += (long)value;
     }
-
-    @Override
-    public boolean isInteger() {
-      return true;
-    }
     
     @Override
     public boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
@@ -133,9 +119,39 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     }
   },
   /**
+   * Count of motorcycles
+   */
+  mcycles("Motorcycles", GCFieldType.INT) {
+    @Override
+    protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
+      return tally.totalMotorcycles;
+    }
+    
+    @Override
+    protected void doSet(double value, UnitsUsed units, TrafficMonitoringTallyCountFields result) throws Exception {
+      result.totalMotorcycles = (long)value;
+    }
+    
+    @Override
+    protected void doAdd(double value, TrafficMonitoringTallyCountFields result) throws Exception {
+      result.totalMotorcycles += (long)value;
+    }
+    
+    @Override
+    public boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
+      return tally.totalMotorcycles >= 0;
+    }
+    
+    @Override
+    public boolean isValid(TallyDurationEnum TD) {
+      return TD.minutes <= TallyDurationEnum.day.minutes;
+    }
+  },
+  
+  /**
    * Count of motorized axles
    */
-  axles("Axles") {
+  axles("Axles", GCFieldType.INT) {
 
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
@@ -150,11 +166,6 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     @Override
     protected void doAdd(double value, TrafficMonitoringTallyCountFields result) throws Exception {
       result.totalMotorizedAxles += (long)value;
-    }
-
-    @Override
-    public boolean isInteger() {
-      return true;
     }
     
     @Override
@@ -171,7 +182,7 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
    * Count of events on sensor 1
    * @since 1.262
    */
-  sens1("Sensor 1") {
+  sens1("Sensor 1", GCFieldType.INT) {
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
       return tally.sensorCount[0];
@@ -188,11 +199,6 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     }
 
     @Override
-    public boolean isInteger() {
-      return true;
-    }
-
-    @Override
     protected boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
       return tally.sensorCount[0] >= 0;
     }
@@ -201,7 +207,7 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
    * Count of events on sensor 2
    * @since 1.262
    */
-  sens2("Sensor 2") {
+  sens2("Sensor 2", GCFieldType.INT) {
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
       return tally.sensorCount[1];
@@ -218,11 +224,6 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     }
 
     @Override
-    public boolean isInteger() {
-      return true;
-    }
-
-    @Override
     protected boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
       return tally.sensorCount[1] >= 0;
     }
@@ -231,12 +232,12 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
    * Sum of motorized vehicle speeds. This uses the speed units defined in the 'FU' header
    * @see TrafficMonitoringTallyCountFields#sumMotorizedSpeedsKph
    */
-  speeds("Sum of Speeds") {
+  speeds("Sum of Speeds", GCFieldType.DOUBLE) {
 
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
-      if (tally.sumMotorizedSpeedsKph != 0)
-        return units.getSpeed().toNative(tally.sumMotorizedSpeedsKph);
+      if (tally.speed.sumMotorizedKph != 0)
+        return units.getSpeed().toNative(tally.speed.sumMotorizedKph);
       return 0;
     }
     
@@ -247,27 +248,17 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     
     @Override
     protected void doSet(double value, UnitsUsed units, TrafficMonitoringTallyCountFields result) throws Exception {
-      result.sumMotorizedSpeedsKph = units.getSpeed().toMetric(value);
+      result.speed.sumMotorizedKph = units.getSpeed().toMetric(value);
     }
     
     @Override
     protected void doAdd(double metricValue, TrafficMonitoringTallyCountFields result) throws Exception {
-      result.sumMotorizedSpeedsKph += metricValue;
-    }
-    
-    @Override
-    public boolean isAdditive() {
-      return true;
-    }
-
-    @Override
-    public boolean isInteger() {
-      return false;
+      result.speed.sumMotorizedKph += metricValue;
     }
     
     @Override
     public boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
-      return tally.sumMotorizedSpeedsKph >= 0;
+      return tally.speed.sumMotorizedKph >= 0;
     }
     
     @Override
@@ -279,11 +270,11 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
    * Average speed of all observations. This uses the speed units defined in the 'FU' header
    * @see TrafficMonitoringTallyCountFields#averageSpeedKph
    */
-  speeda("Average Speed") {
+  speeda("Average Speed", GCFieldType.DOUBLE) {
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
-      if (tally.averageSpeedKph != 0)
-        return units.getSpeed().toNative(tally.averageSpeedKph);
+      if (tally.speed.averageKph != 0)
+        return units.getSpeed().toNative(tally.speed.averageKph);
       return 0;
     }
     
@@ -294,12 +285,7 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     
     @Override
     protected void doSet(double value, UnitsUsed units, TrafficMonitoringTallyCountFields result) throws Exception {
-      result.averageSpeedKph = units.getSpeed().toMetric(value);
-    }
-
-    @Override
-    public boolean isInteger() {
-      return false;
+      result.speed.averageKph = units.getSpeed().toMetric(value);
     }
     
     @Override
@@ -309,7 +295,7 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     
     @Override
     public boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
-      return tally.averageSpeedKph >= 0;
+      return tally.speed.averageKph >= 0;
     }
     
     @Override
@@ -317,10 +303,82 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
       return TD.minutes <= TallyDurationEnum.hr.minutes;
     }
   },
+  
+  /**
+   * Number of observations with valid speeds.
+   * @see TrafficMonitoringTallyCountFields#numberSpeedObs
+   */
+  speedm("Motorized with Valid Speeds", GCFieldType.DOUBLE) {
+    @Override
+    protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
+      return tally.speed.totalMotorized;
+    }
+    
+    @Override
+    public String format(VehicleTallyRec tally, UnitsUsed units) {
+      return RawFmtUtils.df1.format(doGet(tally.trafficmonitoring, units));
+    }
+    
+    @Override
+    protected void doSet(double value, UnitsUsed units, TrafficMonitoringTallyCountFields result) throws Exception {
+      result.speed.totalMotorized = (int)value;
+    }
+    
+    @Override
+    protected void doAdd(double value, TrafficMonitoringTallyCountFields result) throws Exception {
+      result.speed.totalMotorized += value;
+    }
+    
+    @Override
+    public boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
+      return tally.speed.totalMotorized >= 0;
+    }
+    
+    @Override
+    public boolean isValid(TallyDurationEnum TD) {
+      return TD.minutes <= TallyDurationEnum.hr.minutes;
+    }
+  },
+  
+  /**
+   * Average directional split over the year
+   */
+  annualsplit("Annual Directional Split", GCFieldType.DOUBLE) {
+    @Override
+    protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
+      return tally.averageDirSplit;
+    }
+    
+    @Override
+    public String format(VehicleTallyRec tally, UnitsUsed units) {
+      return RawFmtUtils.df3.format(doGet(tally.trafficmonitoring, units));
+    }
+    
+    @Override
+    protected void doSet(double value, UnitsUsed units, TrafficMonitoringTallyCountFields result) throws Exception {
+      result.averageDirSplit = value;
+    }
+    
+    @Override
+    public boolean isAdditive() {
+      return false;
+    }
+
+    @Override
+    public boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
+      return (tally.averageDirSplit >= 0 && tally.averageDirSplit <= 100);
+    }
+    
+    @Override
+    public boolean isValid(TallyDurationEnum TD) {
+      return TD.minutes >= TallyDurationEnum.month.minutes;
+    }
+  },
+  
   /**
    * Average occupancy as a fraction
    */
-  occupancy("Average Occupancy") {
+  occupancy("Average Occupancy", GCFieldType.DOUBLE) {
 
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
@@ -343,11 +401,6 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     }
 
     @Override
-    public boolean isInteger() {
-      return false;
-    }
-    
-    @Override
     public boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
       return tally.averageOccupancy >= 0;
     }
@@ -358,13 +411,13 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     }
   },
   /**
-   * Average air temperature in degrees centigrade
+   * Average air temperature in degrees centigrade. If not set, returns null
    */
-  tempair("Air temperature") {
+  tempair("Air temperature", GCFieldType.INT) {
 
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
-      return tally.averageTempAirC;
+      return tally.averageTemp.air.isSet() ? tally.averageTemp.air.C : null;
     }
     
     @Override
@@ -378,7 +431,42 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     
     @Override
     protected void doSet(double value, UnitsUsed units, TrafficMonitoringTallyCountFields result) throws Exception {
-      result.averageTempAirC = value;
+      result.averageTemp.air.set(value);
+    }
+    
+    @Override
+    public boolean isAdditive() {
+      return false;
+    }
+    
+    @Override
+    public boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
+      return (tally.averageTemp.air.C >= -60) && (tally.averageTemp.air.C < 60);
+    }
+  },
+  /**
+   * Average surface temperature in degrees centigrade. If not set, returns null
+   * @since 1.313
+   */
+  tempsurf("Surface temperature", GCFieldType.INT) {
+
+    @Override
+    protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
+      return tally.averageTemp.surface.isSet() ? tally.averageTemp.surface.C : null;
+    }
+    
+    @Override
+    public String format(VehicleTallyRec tally, UnitsUsed units) {
+      try {
+        return RawFmtUtils.df1.format(doGet(tally.trafficmonitoring, units));
+      } catch (java.lang.IllegalArgumentException e) {
+        return "0";
+      }
+    }
+    
+    @Override
+    protected void doSet(double value, UnitsUsed units, TrafficMonitoringTallyCountFields result) throws Exception {
+      result.averageTemp.surface.set(value);
     }
     
     @Override
@@ -387,20 +475,16 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     }
 
     @Override
-    public boolean isInteger() {
-      return false;
-    }
-    
-    @Override
     public boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
-      return (tally.averageTempAirC >= -60) && (tally.averageTempAirC < 60);
+      return (tally.averageTemp.surface.C >= -60) && (tally.averageTemp.surface.C < 70);
     }
   },
+  
   /**
    * Average received signal strength indicator, for bluetooth or wireless devices
    * @since 1.261
    */
-  rssiavg("Average RSSI") {
+  rssiavg("Average RSSI", GCFieldType.DOUBLE) {
 
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
@@ -432,11 +516,6 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     }
 
     @Override
-    public boolean isInteger() {
-      return false;
-    }
-    
-    @Override
     public boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
       return tally.averageRSSI != 0;
     }
@@ -444,7 +523,7 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
   /**
    * Annual Average Daily Traffic
    */
-  aadt("AADT") {
+  aadt("Volume", GCFieldType.DOUBLE) {
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
       return tally.aadt;
@@ -461,13 +540,8 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     }
     
     @Override
-    public boolean isInteger() {
-      return false;
-    }
-    
-    @Override
-    public boolean isAdditive() {
-      return true;
+    protected void doAdd(double value, TrafficMonitoringTallyCountFields result) throws Exception {
+      result.aadt += value;
     }
 
     @Override
@@ -484,7 +558,7 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
    * Annual Average Weekday Traffic
    * @since 1.311
    */
-  aawt("AAWT") {
+  aawt("AAWT", GCFieldType.DOUBLE) {
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
       return tally.aawt;
@@ -499,15 +573,10 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     public String format(VehicleTallyRec tally, UnitsUsed units) {
       return Integer.toString(doGet(tally.trafficmonitoring, units).intValue());
     }
-    
+
     @Override
-    public boolean isInteger() {
-      return false;
-    }
-    
-    @Override
-    public boolean isAdditive() {
-      return true;
+    protected void doAdd(double value, TrafficMonitoringTallyCountFields result) throws Exception {
+      result.aawt += value;
     }
 
     @Override
@@ -520,11 +589,46 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
       return TD.minutes >= TallyDurationEnum.month.minutes;
     }
   },
+  /**
+   * Seasonal Average Daily Traffic
+   * @since 1.326
+   */
+  sadt("SADT", GCFieldType.DOUBLE) {
+    @Override
+    protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
+      return tally.sadt;
+    }
+
+    @Override
+    protected void doSet(double value, UnitsUsed units, TrafficMonitoringTallyCountFields result) throws Exception {
+      result.sadt = value;
+    }
+    
+    @Override
+    public String format(VehicleTallyRec tally, UnitsUsed units) {
+      return Integer.toString(doGet(tally.trafficmonitoring, units).intValue());
+    }
+
+    @Override
+    protected void doAdd(double value, TrafficMonitoringTallyCountFields result) throws Exception {
+      result.sadt += value;
+    }
+
+    @Override
+    protected boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
+      return tally.sadt >= 0;
+    }
+    
+    @Override
+    public boolean isValid(TallyDurationEnum TD) {
+      return TD.minutes >= TallyDurationEnum.month.minutes;
+    }
+  },
   
   /**
    * Percentage change between successive AADT values
    */
-  aadtpctchange("AADT percentage change") {
+  aadtpctchange("AADT percentage change", GCFieldType.DOUBLE) {
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
       return tally.aadtpctchange;
@@ -540,11 +644,6 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
       if (withinBounds(tally.trafficmonitoring))
         return RawFmtUtils.df1.format(tally.trafficmonitoring.aadtpctchange);
       return "0";
-    }
-    
-    @Override
-    public boolean isInteger() {
-      return false;
     }
     
     @Override
@@ -567,11 +666,54 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
       return TD.minutes >= TallyDurationEnum.month.minutes;
     }
   },
+
+  /**
+   * Percentage change between successive truck volumes
+   * @since 1.325
+   */
+  aadttpctchange("Truck volume percentage change", GCFieldType.DOUBLE) {
+    @Override
+    protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
+      return tally.aadttpctchange;
+    }
+
+    @Override
+    protected void doSet(double value, UnitsUsed units, TrafficMonitoringTallyCountFields result) throws Exception {
+      result.aadttpctchange = value;
+    }
+    
+    @Override
+    public String format(VehicleTallyRec tally, UnitsUsed units) {
+      if (withinBounds(tally.trafficmonitoring))
+        return RawFmtUtils.df1.format(tally.trafficmonitoring.aadttpctchange);
+      return "0";
+    }
+    
+    @Override
+    public boolean isAdditive() {
+      return false;
+    }
+
+    @Override
+    protected boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
+      return !Double.isNaN(tally.aadttpctchange);
+    }
+
+    @Override
+    public double getMinValue() {
+      return -Double.MAX_VALUE;
+    }
+    
+    @Override
+    public boolean isValid(TallyDurationEnum TD) {
+      return TD.minutes >= TallyDurationEnum.month.minutes;
+    }
+  },
   
   /**
    * Number of AADT observations used to estimate another value
    */
-  aadtobs("AADT Observations") {
+  aadtobs("AADT Observations", GCFieldType.INT) {
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
       return tally.aadtobs;
@@ -588,13 +730,8 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     }
     
     @Override
-    public boolean isInteger() {
-      return true;
-    }
-    
-    @Override
-    public boolean isAdditive() {
-      return true;
+    protected void doAdd(double value, TrafficMonitoringTallyCountFields result) throws Exception {
+      result.aadtobs += value;
     }
 
     @Override
@@ -612,7 +749,7 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
    * Axle correction factor expressed as axles per vehicle (0.5 = 2 axle vehicle).
    * @since 1.281
    */
-  aadtacf("Axle Correction Factor") {
+  aadtacf("Axle Correction Factor", GCFieldType.DOUBLE) {
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
       return tally.acf;
@@ -639,11 +776,6 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     }
     
     @Override
-    public boolean isInteger() {
-      return false;
-    }
-    
-    @Override
     public boolean isAdditive() {
       return false;
     }
@@ -660,7 +792,7 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
    * @see VehicleFieldsEnum#qc
    * @see TrafficMonitoringTallyCountFields#countaccuracy
    */
-  qc("Quality Rating") {
+  qc("Quality Rating", GCFieldType.INT) {
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
       return tally.countaccuracy;
@@ -677,11 +809,6 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     }
     
     @Override
-    public boolean isInteger() {
-      return true;
-    }
-    
-    @Override
     public boolean isAdditive() {
       return false;
     }
@@ -695,7 +822,7 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
   /**
    * Percentage of trucks (commercial vehicles)
    */
-  truckpct("Percent Trucks") {
+  truckpct("Percent Trucks", GCFieldType.DOUBLE) {
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
       return tally.truckpct;
@@ -714,11 +841,6 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     }
     
     @Override
-    public boolean isInteger() {
-      return false;
-    }
-    
-    @Override
     public boolean isAdditive() {
       return false;
     }
@@ -732,20 +854,22 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
   /**
    * 85th percentile speed. This uses the speed units defined in the 'FU' header
    */
-  speedpct85("85th percentile speed") {
+  speedpct85("85th percentile speed", GCFieldType.DOUBLE) {
     @Override
     protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
-      return tally.speedpct85;
+      if (tally.speed.averageKph != 0)
+        return units.getSpeed().toNative(tally.speed.pct85);
+      return 0;
     }
 
     @Override
     protected void doSet(double value, UnitsUsed units, TrafficMonitoringTallyCountFields result) throws Exception {
-      result.speedpct85 = units.getSpeed().toMetric(value);
+      result.speed.pct85 = units.getSpeed().toMetric(value);
     }
-
+    
     @Override
-    public boolean isInteger() {
-      return false;
+    public String format(VehicleTallyRec tally, UnitsUsed units) {
+      return RawFmtUtils.df1.format(doGet(tally.trafficmonitoring, units));
     }
     
     @Override
@@ -755,14 +879,80 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
     
     @Override
     protected boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
-      return tally.speedpct85 > 0;
+      return tally.speed.pct85 > 0;
     }
-  };
+  },
+  /**
+   * In seconds as a decimal
+   */
+  gap("Gap", GCFieldType.DOUBLE) {
+    @Override
+    protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
+      return tally.gap;
+    }
+    
+    @Override
+    protected void doSet(double value, UnitsUsed units, TrafficMonitoringTallyCountFields result) throws Exception {
+      result.gap = value;
+    }
+    
+    @Override
+    public String format(VehicleTallyRec tally, UnitsUsed units) {
+      if (withinBounds(tally.trafficmonitoring))
+        return RawFmtUtils.df1.format(tally.trafficmonitoring.gap);
+      return "0";
+    }
+    
+    @Override
+    public boolean isAdditive() {
+      return false;
+    }
+
+    @Override
+    protected boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
+      return tally.gap >= 0;
+    }
+  },
+  /**
+   * In seconds as a decimal
+   */
+  headway("Headway", GCFieldType.DOUBLE) {
+    @Override
+    protected Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units) {
+      return tally.headway;
+    }
+    
+    @Override
+    protected void doSet(double value, UnitsUsed units, TrafficMonitoringTallyCountFields result) throws Exception {
+      result.headway = value;
+    }
+    
+    @Override
+    public String format(VehicleTallyRec tally, UnitsUsed units) {
+      if (withinBounds(tally.trafficmonitoring))
+        return RawFmtUtils.df1.format(tally.trafficmonitoring.headway);
+      return "0";
+    }
+    
+    @Override
+    public boolean isAdditive() {
+      return false;
+    }
+
+    @Override
+    protected boolean withinBounds(TrafficMonitoringTallyCountFields tally) {
+      return tally.headway >= 0;
+    }
+  }
+  ;
   
   private final String fieldName;
 
-  private TrafficMonitoringTallyFieldNamespace(String _name) {
+  private final GCFieldType fieldType;
+  
+  private TrafficMonitoringTallyFieldNamespace(String _name, GCFieldType gft) {
     this.fieldName = _name;
+    this.fieldType = gft;
   }
   
   @Override
@@ -773,6 +963,11 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
   @Override
   public String getDescription() {
     return fieldName;
+  }
+
+  @Override
+  public GCFieldType getFieldType() {
+    return fieldType;
   }
   
   protected abstract Number doGet(TrafficMonitoringTallyCountFields tally, UnitsUsed units);
@@ -813,6 +1008,10 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
   public final void add(double metricValue, VehicleTallyRec result) throws Exception {
     doAdd(metricValue, result.trafficmonitoring);
   }
+  
+  public final void inc(VehicleTallyRec result) throws Exception {
+    add(1, result);
+  }
 
   @Override
   public double getMinValue() {
@@ -837,4 +1036,14 @@ public enum TrafficMonitoringTallyFieldNamespace implements TallyCountField {
   public boolean isValid(TallyDurationEnum TD) {
     return true;
   }
+  
+  public static TallyCountField fromID(String name) {
+    TallyCountField tcf = TrafficMonitoringTallyFieldNamespace_ArrayFieldsEnum.fromID(name);
+    if (tcf != null)
+      return tcf;
+
+    return TrafficMonitoringTallyFieldNamespace.valueOf(name);
+  }
+  
+  
 }

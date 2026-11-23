@@ -21,8 +21,11 @@ package geocounts.traffic.formats;
 public class UserDefinedObservationField implements ObservationField {
   private String key;
   
-  protected UserDefinedObservationField(String key) {
+  private final GCFieldType fieldType;
+  
+  protected UserDefinedObservationField(String key, GCFieldType ft) {
     this.key = key;
+    this.fieldType = ft;
   }
   
   @Override
@@ -32,17 +35,22 @@ public class UserDefinedObservationField implements ObservationField {
 
   @Override
   public String getDescription() {
-    return "Unknown VV field " + key;
+    return "User VV field " + key;
   }
 
   @Override
-  public boolean isNumeric() {
-    return false;
+  public GCFieldType getFieldType() {
+    return fieldType;
   }
 
   @Override
-  public String get(VehicleRec veh, UnitsUsed units) throws Exception {
+  public String get(VehicleRec veh, UnitsUsed units) {
     return veh.userdefined.get(key);
+  }
+
+  @Override
+  public Object getValue(VehicleRec veh, UnitsUsed units) throws Exception {
+    return fieldType.fromString(veh.userdefined.get(key));
   }
 
   @Override

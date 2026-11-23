@@ -27,23 +27,26 @@ import geocounts.traffic.formats.LatLongCoordinate;
  */
 public enum EnumGPS {
   /**
-   * Lat long height
+   * Lat, long, altitude and direction
    */
   llh() {
 
     @Override
     public void parse(String[] data, LatLongCoordinate result) {
-      result.latitude  = data[0] != null ? Double.parseDouble(data[0]) : 0;
-      result.longitude = data[1] != null ? Double.parseDouble(data[1]) : 0;
+      result.setLatLng(data[0] != null ? Double.parseDouble(data[0]) : 0,
+                       data[1] != null ? Double.parseDouble(data[1]) : 0);
       if (data.length > 2)
-        result.height = data[2] != null ? Double.parseDouble(data[2]) : 0;
+        result.altitude = data[2] != null ? Double.parseDouble(data[2]) : 0;
+      if (data.length > 3)
+        result.direction = data[3] != null ? Double.parseDouble(data[3]) : 0;
     }
 
     @Override
     public String[] format(LatLongCoordinate point) {
-      return new String[]{Double.toString(point.latitude), 
-                          Double.toString(point.longitude), 
-                          Double.toString(point.height)};
+      return new String[]{Double.toString(point.getLatitude()), 
+                          Double.toString(point.getLongitude()), 
+                          Double.toString(point.altitude), 
+                          Double.toString(point.direction)};
     }
     
   },
@@ -59,16 +62,16 @@ public enum EnumGPS {
     
     @Override
     public void parse(String[] data, LatLongCoordinate result) {
-// DIGIT  2  3  4  5  6  7  8  9  C  F  G  H  J  M  P  Q  R  V  W  X
-// ASCII 50                      67                            87 88
-      if (true) {
-        
-      }
+      OpenLocationCode olc = new OpenLocationCode();
+      if (data[0] != null)
+        olc.parse(data[0], result);
     }
 
     @Override
     public String[] format(LatLongCoordinate point) {
+      OpenLocationCode olc = new OpenLocationCode();
       String[] result = new String[3];
+      result[0] = olc.format(point);
       return result;
     }
     

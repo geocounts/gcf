@@ -24,6 +24,7 @@ import java.util.Collection;
 /**
  * The collection of {@link RawTrafficDataHeaderElement} in the order they appear in each tally record
  * @see TallyRecordsDef#TO
+ * @see TallyPartOrderEnum
  */
 public class TallyPartOrderDef extends RawTrafficDataHeaderElement {
   protected final ArrayList<TallyPartOrder> parts;
@@ -37,12 +38,17 @@ public class TallyPartOrderDef extends RawTrafficDataHeaderElement {
     return EnumHeaderRecords.TO;
   }
   
+  @Override
   public final void clear() {
     parts.clear();
   }
   
   protected boolean hasSpeedByLength() {
     return hasPart(TallyPartOrderEnum.TP);
+  }
+  
+  protected boolean hasSpeedByVehType() {
+    return hasPart(TallyPartOrderEnum.TQ);
   }
   
   public boolean hasPart(TallyPartOrderEnum po) {
@@ -120,8 +126,7 @@ public class TallyPartOrderDef extends RawTrafficDataHeaderElement {
   }
   
   /**
-   * If the TO record is not defined, use this
-   * @author scropley
+   * If the TO record is not defined, use this: TF, TC, TS, TL
    */
   public static void setDefaultPartOrder(TallyRecordsDef parent, java.util.List<TallyPartOrder> result) {
     if (parent.TF.isRecording()) {

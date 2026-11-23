@@ -20,6 +20,7 @@ package geocounts.traffic.formats;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * Allows the user to track changes made to a GC file
@@ -27,14 +28,27 @@ import java.util.Iterator;
  * @see RawTrafficDataHeaderFileDef#FX
  */
 public class FileChanges implements Iterable<FileChangeRec> {
-  private final ArrayList<FileChangeRec> changes = new ArrayList<FileChangeRec>();
+  private final List<FileChangeRec> changes = new ArrayList<FileChangeRec>();
   public void copyFrom(FileChanges other) {
+    clear();
+    for (FileChangeRec cr: other) {
+      FileChangeRec newRec = new FileChangeRec(this);
+      newRec.setFrom(cr);
+      changes.add(newRec);
+    }
+  }
+  
+  public void clear() {
     changes.clear();
-    changes.addAll(other.changes);
+  }
+  
+  protected final RawTrafficDataHeaderFileDef F;
+  protected FileChanges(RawTrafficDataHeaderFileDef F) {
+    this.F = F;
   }
 
   public void addChange(long dateTime, String actionID, String userID, String parameter) {
-    FileChangeRec fc = new FileChangeRec();
+    FileChangeRec fc = new FileChangeRec(this);
     fc.dateTime = dateTime;
     fc.actionID = actionID;
     fc.userID = userID;
@@ -44,7 +58,7 @@ public class FileChanges implements Iterable<FileChangeRec> {
   }
 
   public FileChangeRec fromLine(String line) {
-    FileChangeRec result = new FileChangeRec();
+    FileChangeRec result = new FileChangeRec(this);
     result.fromLine(line);
     changes.add(result);
     return result;

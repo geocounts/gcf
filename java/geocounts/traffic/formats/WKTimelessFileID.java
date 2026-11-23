@@ -79,6 +79,18 @@ public enum WKTimelessFileID {
     public boolean isValid(TallyDurationEnum TD) {
       return TD == TallyDurationEnum.month;
     }
+  },
+
+  
+  /**
+   * (13) Intended to transfer header information, not count data.<br />
+   * Use this to create a station information in another system.
+   */
+  headeronly(13) {
+    @Override
+    public boolean isValid(TallyDurationEnum TD) {
+      return true;
+    }
   };
   public final long ID;
   

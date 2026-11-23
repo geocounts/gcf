@@ -20,17 +20,14 @@ package geocounts.traffic.formats;
 
 import java.util.HashMap;
 
-import geocounts.traffic.formats.ChannelData;
-import geocounts.traffic.formats.ChannelDirEnum;
-import geocounts.traffic.formats.RawTrafficDataStation;
-import geocounts.traffic.formats.StationLabelElementField;
+import geocounts.formats.units.EnumSpeedUnit;
 import geocounts.traffic.formats.StationLabels.LabelSetForElement;
-import geocounts.traffic.formats.UnitsUsed;
-import geocounts.traffic.formats.VehicleRec;
 
 /**
  * 
- * @see com.transmetric.geocounts.webreports.SpeedingComputer
+ * Copied from com.transmetric.geocounts.webreports.SpeedingComputer
+ * 
+ * @see StationLabelElementField#speedlimit
  */
 public class SpeedLimit {
   
@@ -42,17 +39,21 @@ public class SpeedLimit {
   }
   
   public SpeedLimit(RawTrafficDataStation S, UnitsUsed FU) {
-    set(S, FU);
+    set(S, FU.getSpeed());
+  }
+  
+  public SpeedLimit(RawTrafficDataStation S, EnumSpeedUnit SU) {
+    set(S, SU);
   }
   
   public void set(RawTrafficDataStation S, double kph) {
     limitKphByChannel.clear();
     limitKphByDir.clear();
-    nominalLimitKph = 0;
     for (ChannelData channel: S.getAllChannels()) {
       limitKphByChannel.put(channel.getChannelID(), kph);
       limitKphByDir.put(channel.to1.getDir(), kph);
     }
+    assignNominalSpeed(kph);
   }
   
   public boolean isSet() {
@@ -81,7 +82,7 @@ public class SpeedLimit {
     return true;
   }
   
-  public void set(RawTrafficDataStation S, UnitsUsed FU) {
+  public void set(RawTrafficDataStation S, EnumSpeedUnit FU) {
     // first look at the station label
     double stationNative = S.SL.getStationLabelAsDouble(StationLabelElementField.speedlimit, 0.0);
     
@@ -91,7 +92,7 @@ public class SpeedLimit {
       String label = S.SL.getDirectionLabel(dir, StationLabelElementField.speedlimit);
       try {
         double nativeValue = Double.parseDouble(label);
-        dirNative.put(dir, FU.getSpeed().toMetric(nativeValue));
+        dirNative.put(dir, FU.toMetric(nativeValue));
       } catch (Exception ex) {}
     }
     
@@ -113,17 +114,24 @@ public class SpeedLimit {
         }
       }
       
-      double channelLimitKph = FU.getSpeed().toMetric(nativeValue);
+      double channelLimitKph = FU.toMetric(nativeValue);
       limitKphByChannel.put(channel.getChannelID(), channelLimitKph);
       limitKphByDir.put(channel.to1.getDir(), channelLimitKph);
       
       if (nominalLimitKph == 0)
-        nominalLimitKph = channelLimitKph;
+        assignNominalSpeed(channelLimitKph);
     }
+    
+    if (nominalLimitKph == 0)
+      assignNominalSpeed(FU.toMetric(stationNative));
   }
   
   public double getNominalLimitKph() {
     return nominalLimitKph;
+  }
+  
+  public int getNominalLimitMph() {
+    return (int)Math.rint(EnumSpeedUnit.mph.toNative(nominalLimitKph));
   }
   
   public double getSpeedLimitKph(VehicleRec veh) {

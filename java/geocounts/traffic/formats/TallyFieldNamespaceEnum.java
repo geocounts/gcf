@@ -18,6 +18,10 @@
  */
 package geocounts.traffic.formats;
 
+/**
+ * Defines name spaces for {@link #trafficmonitoring} and {@link #userdefined}
+ *
+ */
 public enum TallyFieldNamespaceEnum {
   /**
    * @see TrafficMonitoringTallyFieldNamespace
@@ -26,10 +30,11 @@ public enum TallyFieldNamespaceEnum {
 
     @Override
     public TallyCountField fromField(String name) throws Exception {
-      return TrafficMonitoringTallyFieldNamespace.valueOf(name);
+      return TrafficMonitoringTallyFieldNamespace.fromID(name);
     }
     
   },
+  
   /*
    * @see AnnualTrafficTallyFieldNamespace
    *
@@ -42,6 +47,7 @@ public enum TallyFieldNamespaceEnum {
     
   },
   */
+  
   /**
    * @see UserDefinedTallyField
    */

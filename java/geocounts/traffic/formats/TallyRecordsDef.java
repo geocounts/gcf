@@ -28,13 +28,11 @@ public final class TallyRecordsDef {
    * @see TallyDurationEnum
    */
   public TallyDurationEnum TD = TallyDurationEnum.off;
-  private final TimeZoneData SZ;
   
   private final RawTrafficDataHeaderFileDef _parent;
-  protected TallyRecordsDef(RawTrafficDataHeaderFileDef f, TimeZoneData SZ) {
+  protected TallyRecordsDef(RawTrafficDataHeaderFileDef f) {
     TF = new TallyCountDef();
     _parent = f;
-    this.SZ = SZ;
   }
   
   /*
@@ -77,7 +75,7 @@ public final class TallyRecordsDef {
 
   /**
    * Vehicle type classification.
-   * This corresponds to {@link VehicleRec#vclassType}
+   * This corresponds to {@link VehicleRec#otherClassifications}
    * @see ClassifiedVehTypeDef
    */
   public final ClassifiedVehTypeDef TC = new ClassifiedVehTypeDef();
@@ -102,6 +100,13 @@ public final class TallyRecordsDef {
    */
   public final ClassifiedSpeedByLengthDef TP = new ClassifiedSpeedByLengthDef(this);
   
+  /**
+   * Speed by class based vehicle type.
+   * @see ClassifiedSpeedByVehTypeDef
+   * @since 1.320
+   */
+  public final ClassifiedSpeedByVehTypeDef TQ = new ClassifiedSpeedByVehTypeDef(this);
+  
   public void copyFrom(TallyRecordsDef other) {
     this.TD = other.TD;
     this.TO.copyFrom(other.TO);
@@ -109,12 +114,10 @@ public final class TallyRecordsDef {
     this.TC.copyFrom(other.TC);
     this.TS.copyFrom(other.TS);
     this.TL.copyFrom(other.TL);
+    this.TP.copyFrom(other.TP);
+    this.TQ.copyFrom(other.TQ);
   }
-  
-  /**
-   * 
-   * @since 1.9951
-   */
+
   public void mergeFrom(TallyRecordsDef other) {
     if (this.TD == TallyDurationEnum.off)
       this.TD = other.TD;
@@ -128,21 +131,25 @@ public final class TallyRecordsDef {
       this.TS.copyFrom(other.TS);
     if (!this.TL.isRecording())
       this.TL.copyFrom(other.TL);
+    if (!this.TP.isRecording())
+      this.TP.copyFrom(other.TP);
+    if (!this.TQ.isRecording())
+      this.TQ.copyFrom(other.TQ);
   }
   
   /**
    * This creates a new {@link VehicleTallyRec tally}. You must then call {@link RawTrafficData#addTally(VehicleTallyRec)} to add it to the data.
    * @param channelID The {@link ChannelData#getChannelID() channel ID} of the new tally
    * @param period The sub hourly period. See {@link TallyDurationEnum}
-   * @param hour The time in milliseconds at the hour of the tally. This value must be trimmed to the hour.
+   * @param hourTime The time in milliseconds at the hour of the tally. This value must be trimmed to the hour.
    * @return A new {@link VehicleTallyRec}
    * @throws Exception If the header does not specify a duration
    */
-  public VehicleTallyRec create(int channelID, int period, long hour) throws Exception {
+  public VehicleTallyRec create(int channelID, int period, long hourTime) throws Exception {
     if (TD == TallyDurationEnum.off)
       throw new NoTDException(this, TD);
-    VehicleTallyRec result = new VehicleTallyRec(this, channelID, period, SZ.getRecordedTimestampOffset());
-    result.setHourAdjustTZ(hour);
+    VehicleTallyRec result = new VehicleTallyRec(this, channelID, period);
+    result.time = hourTime;
     return result;
   }
 

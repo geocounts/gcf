@@ -19,13 +19,12 @@
 package geocounts.traffic.formats;
 
 import java.util.Calendar;
-import java.util.GregorianCalendar;
 
 /**
  * Format is {@link #stationID stationid}_yyyyMMddHHmm_{@link #fileID fileid}.txt
  * @see WKTimelessFileID
  */
-public class RawTrafficDataFilename {
+public class RawTrafficDataFilename extends TimedFilename implements Comparable<RawTrafficDataFilename> {
   public final static String EXT = "txt";
   
   public RawTrafficDataFilename() {
@@ -33,6 +32,20 @@ public class RawTrafficDataFilename {
   
   public RawTrafficDataFilename(String value) {
     this.fromString(value);
+  }
+
+  @Override
+  public int compareTo(RawTrafficDataFilename o) {
+    return this.toString().compareTo(o.toString());
+  }
+  
+  @Override
+  public boolean equals(Object o) {
+    if (o instanceof RawTrafficDataFilename) {
+      RawTrafficDataFilename other = (RawTrafficDataFilename)o;
+      return this.compareTo(other) == 0;
+    }
+    return false;
   }
   
   /**
@@ -65,12 +78,6 @@ public class RawTrafficDataFilename {
   public void setStationID(long value) {
     stationID.set(Long.toString(value));
   }
-  
-  /**
-   * yyyyMMddHHmm
-   * For the month field, Jan = 1
-   */
-  public final int[] startDateTime = new int[5];
   
   /**
    * Does any information appear after the {@link #startDateTime} and before the {@link #fileID}?
@@ -127,70 +134,6 @@ public class RawTrafficDataFilename {
     return true;
   }
   
-  public GregorianCalendar getStartDate() {
-    GregorianCalendar gc = RawFmtUtils.newGregorianCalendar();
-    gc.set(GregorianCalendar.YEAR, startDateTime[0]);
-    gc.set(GregorianCalendar.MONTH, startDateTime[1]-1);
-    gc.set(GregorianCalendar.DATE, startDateTime[2]);
-    gc.set(GregorianCalendar.HOUR_OF_DAY, startDateTime[3]);
-    gc.set(GregorianCalendar.MINUTE, startDateTime[4]);
-    gc.set(GregorianCalendar.SECOND, 0);
-    gc.set(GregorianCalendar.MILLISECOND, 0);
-    return gc;
-  }
-  
-  public GregorianCalendar getStartDateNoTime() {
-    return RawFmtUtils.newGregorianCalendar(startDateTime[0], startDateTime[1]-1, startDateTime[2], 0);
-  }
-  
-  /**
-   * This will return zero if the file {@link #isTimeless()}
-   * @return The year
-   */
-  public int getYear() {
-    return startDateTime[0];
-  }
-  
-  /**
-   * This will return zero if the file {@link #isTimeless()}
-   * @return The month, where Jan = 1
-   */
-  public int getMonth() {
-    return startDateTime[1];
-  }
-  
-  /**
-   * This will return zero if the file {@link #isTimeless()}
-   * @return The day of the month, where the first day = 1
-   */
-  public int getDate() {
-    return startDateTime[2];
-  }
-  
-  /**
-   * This will always return zero if the file {@link #isTimeless()}
-   * @return The hour of the day, where the first hour = 0
-   */
-  public int getHour() {
-    return startDateTime[3];
-  }
-  
-  /**
-   * This will always return zero if the file {@link #isTimeless()}
-   * @return The minute of the hour, where the first minute = 0
-   */
-  public int getMinute() {
-    return startDateTime[4];
-  }
-  
-  public void setStartDate(Calendar gc) {
-    startDateTime[0] = gc.get(Calendar.YEAR);
-    startDateTime[1] = gc.get(Calendar.MONTH)+1;
-    startDateTime[2] = gc.get(Calendar.DATE);
-    startDateTime[3] = gc.get(Calendar.HOUR_OF_DAY);
-    startDateTime[4] = gc.get(Calendar.MINUTE);
-  }
-  
   public String toStringNoExt() {
     StringBuilder sb = new StringBuilder();
     sb.append(stationID);
@@ -238,6 +181,7 @@ public class RawTrafficDataFilename {
    * @deprecated Use {@link #getDateTimePart()}
    * @return Same as {@link #getDateTimePart()}
    */
+  @Deprecated
   public String toDatePart() {
     return getDateTimePart();
   }
@@ -276,14 +220,6 @@ public class RawTrafficDataFilename {
     sb.append(startDateTime[4]);
   }
   
-  public boolean isTimeless() {
-    return (startDateTime[0] == 0) && 
-           (startDateTime[1] == 0) && 
-           (startDateTime[2] == 0) && 
-           (startDateTime[3] == 0) && 
-           (startDateTime[4] == 0);
-  }
-  
   public boolean matches(WKTimelessFileID timelessID) {
     return (isTimeless() && (fileID == timelessID.ID));
   }
@@ -292,7 +228,7 @@ public class RawTrafficDataFilename {
    * 
    * @param stationID Must not be null
    * @param startTime Must not be null
-   * @param fileID May be zero
+   * @param fileID May be zero {@link 
    * @return {@link RawTrafficDataFilename}
    * @since 1.11
    */

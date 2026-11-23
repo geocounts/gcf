@@ -27,6 +27,7 @@ public abstract class ClassifiedDef extends RawTrafficDataHeaderElement {
   private String Name;
 
   public void setName(String n) {
+    WKID = null;
     try {
       WKID = WKClassificationSystemName.fromName(n);
     } catch (Exception ifNotWellKnownName) {
@@ -48,6 +49,17 @@ public abstract class ClassifiedDef extends RawTrafficDataHeaderElement {
   public WKClassificationSystemName WKID;
   
   /**
+   * 
+   * @param typeClass {@link WKTypeClass}
+   * @return {@link SpecialClassificationCounter} if this classification system can produce the given type class, or null
+   */
+  public SpecialClassificationCounter getWKTypeClass(WKTypeClass typeClass) {
+    if (WKID == null)
+      return null;
+    return WKID.getWKTypeClassifier(typeClass);
+  }
+  
+  /**
    * Relates to a registered ID
    * Example usage: //geocounts.com/api/cls?clsid=1489023592426
    */
@@ -67,11 +79,6 @@ public abstract class ClassifiedDef extends RawTrafficDataHeaderElement {
    * @return True if this tally classification can be used
    */
   public abstract boolean isRecording();
-  
-  /**
-   * Clears this definition
-   */
-  public abstract void clear();
   
   /**
    * 

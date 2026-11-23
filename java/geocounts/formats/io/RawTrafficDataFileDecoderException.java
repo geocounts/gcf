@@ -20,10 +20,10 @@ package geocounts.formats.io;
 
 import java.io.File;
 
-public class RawTrafficDataFileDecoderException extends Exception {
+public class RawTrafficDataFileDecoderException extends RuntimeException {
   private static final long serialVersionUID = 1L;
   
-  public RawTrafficDataFileDecoderException(int line, Exception cause) {
+  public RawTrafficDataFileDecoderException(int line, Throwable cause) {
     super(cause);
     this.lineNumber = line;
   }

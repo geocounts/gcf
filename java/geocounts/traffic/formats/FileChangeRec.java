@@ -24,22 +24,37 @@ package geocounts.traffic.formats;
  * @since 1.301
  * @see RawTrafficDataHeaderFileDef#FX
  */
-public class FileChangeRec extends RawTrafficDataHeaderElement {
+public class FileChangeRec extends RawTrafficDataHeaderElement implements TimedObject {
   public long dateTime;
+  
+  @Override
+  public long getTime() {
+    return dateTime;
+  }
+  
   public String actionID;
   public String userID;
   public String parameter;
+  
+  private final FileChanges parent;
+  FileChangeRec(FileChanges parent) {
+    this.parent = parent;
+  }
   
   @Override
   public EnumHeaderRecords getSourceRecord() {
     return EnumHeaderRecords.FX;
   }
+
+  @Override
+  public void clear() {
+  }
   
   @Override
   public String[] write() {
     String[] result = new String[5];
-    result[0] = RawFmtUtils.simpleDateFormat(RawFmtUtils.V_DateFormat).format(dateTime);
-    result[1] = RawFmtUtils.ISO8601_TIMEONLY_format(dateTime);
+    result[0] = parent.F.FL.formatBodyEventDate(dateTime);
+    result[1] = parent.F.FL.formatBodyEventTime(dateTime);
     result[2] = actionID;
     result[3] = userID;
     result[4] = parameter;
@@ -49,10 +64,17 @@ public class FileChangeRec extends RawTrafficDataHeaderElement {
   @Override
   protected void read(String[] data) {
     try {
-      dateTime = RawFmtUtils.sdfHeaderV().parse(data[0] + "," + data[1]).getTime();
+      dateTime = parent.F.FL.parseBodyEventDateTime(data[0], data[1]);
     } catch (Exception ex) {}
     actionID = data[2];
     userID = data[3];
     parameter = data[4];
+  }
+  
+  protected void setFrom(FileChangeRec r) {
+    dateTime  = r.dateTime;
+    actionID  = r.actionID;
+    userID    = r.userID;
+    parameter = r.parameter;
   }
 }

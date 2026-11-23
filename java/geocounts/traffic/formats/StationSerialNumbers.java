@@ -42,6 +42,15 @@ public class StationSerialNumbers extends RawTrafficDataHeaderElement implements
   public boolean hasValues() {
     return serials.size() > 0;
   }
+  
+  public String getValue(int index) {
+    return serials.size() > index ? serials.get(index) : null;
+  }
+  
+  @Override
+  public void clear() {
+    serials.clear();
+  }
 
   @Override
   public String toString() {
@@ -61,8 +70,9 @@ public class StationSerialNumbers extends RawTrafficDataHeaderElement implements
    */
   public void add(String value) {
     if (value != null)
-      if (!serials.contains(value))
-        serials.add(value);
+      if (value.length() > 0)
+        if (!serials.contains(value))
+          serials.add(value);
   }
   
   public void mergeFrom(StationSerialNumbers other) {

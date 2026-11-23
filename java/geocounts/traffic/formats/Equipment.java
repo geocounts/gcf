@@ -66,8 +66,8 @@ public class Equipment {
    */
   public void toMap(Map<String, Object> result) {
     for (EquipmentRecBase e: stationRecs)
-      if (e.text != null)
-        result.put("SE_" + e.getElementType() + "_" + e.ElementID + "_" + e.getFieldID(), e.text);
+      if (e.textItems != null)
+        result.put("SE_" + e.getElementType() + "_" + e.ElementID + "_" + e.getFieldID(), e.textItemsAsCSV());
   }
 
   public Iterable<EquipmentStationRec> allForStation() {
@@ -86,18 +86,35 @@ public class Equipment {
     }
     return result;
   }
+  
+  public Iterable<EquipmentChannelRec> allForChannel(int channelID) {
+    ArrayList<EquipmentChannelRec> result = new ArrayList<EquipmentChannelRec>();
+    EquipmentSetForElement er = channelRecs.get(channelID);
+    if (er == null)
+      return result;
+    for (EquipmentRecBase eb: er)
+      result.add((EquipmentChannelRec)eb);
+    return result;
+  }
 
   public void add(EquipmentRecBase r) {
     EquipmentSetForElement e = null;
-    if (r.getElementType() == LabelElementType.station) {
-      e = stationRecs;
-    } else if (r.getElementType() == LabelElementType.channel) {
+    switch (r.getElementType().getAggregation()) {
+    case channel: {
       e = channelRecs.get(r.ElementID);
       if (e == null) {
         e = new EquipmentSetForElement(r.ElementID, LabelElementType.channel);
         channelRecs.put(r.ElementID, e);
       }
+      break;
     }
+    case station: {
+      e = stationRecs;
+      break;
+    }
+    // direction is ignored
+    }
+
     if (e != null)
       e.fields.put(r.getFieldID(), r);
   }
@@ -124,20 +141,52 @@ public class Equipment {
   
   public EquipmentStationRec addStationRecXX(String fieldWithoutXX, Object value) {
     EquipmentStationRec rec = EquipmentHeaderRec.parseStationRec(TextHeaderEscape.XX + fieldWithoutXX);
-    rec.text = value != null ? value.toString() : null;
+    rec.setText(value);
     
     EquipmentHeaderRec er = new EquipmentHeaderRec(rec);
     add(er.rec);
     return (EquipmentStationRec)er.rec;
   }
   
+  public String getStationRecXX(String fieldWithoutXX) {
+    return stationRecs.getValue(TextHeaderEscape.XX + fieldWithoutXX);
+  }
+  
+  /**
+   * 
+   * @param fieldWithoutXX
+   * @return Either a Long, Double or null
+   */
+  public Number getStationRecXXAsNumber(String fieldWithoutXX) {
+    String value = getStationRecXX(fieldWithoutXX);
+    if (value == null)
+      return null;
+    try {
+      if (value.indexOf('.') == -1)
+        return Long.parseLong(value);
+      return Double.parseDouble(value);
+    } catch (Exception ex) {
+      return null;
+    }
+  }
+  
+  /**
+   * 
+   * @param f
+   * @param value Can be any p, and Array of Strings
+   * @return
+   */
   public EquipmentStationRec addStationRec(EquipmentStationElementField f, Object value) {
     EquipmentStationRec rec = EquipmentHeaderRec.parseStationRec(f.name());
-    rec.text = value != null ? value.toString() : null;
+    rec.setText(value);
     
-    EquipmentHeaderRec er = new EquipmentHeaderRec(rec);
-    add(er.rec);
-    return (EquipmentStationRec)er.rec;
+    add(rec);
+    return rec;
+  }
+  
+  public void removeStationRec(EquipmentStationElementField f) {
+    EquipmentStationRec rec = EquipmentHeaderRec.parseStationRec(f.name());
+    stationRecs.remove(rec.getFieldID());
   }
   
   public String getStationRec(EquipmentStationElementField field) {
@@ -150,20 +199,57 @@ public class Equipment {
       return null;
     return r.getValue(f.name());
   }
-  
+
+  public String getChannelRecXX(int chID, String fieldWithoutXX) {
+    EquipmentSetForElement e = channelRecs.get(chID);
+    if (e == null)
+      return null;
+    return e.getValue(TextHeaderEscape.XX + fieldWithoutXX); // does this even work?
+  }
   
   public static abstract class EquipmentRecBase {
     /**
-     * @see LabelElementType
+     * @see LabelElementType Never null
      */
-    public abstract LabelElementType getElementType();
+    public abstract LabelElementType.Impl getElementType();
     
     protected int ElementID;
     
     /**
      * The text value of the field
      */
-    public String text;
+    public String[] textItems;
+    
+    public String textItemsAsCSV() {
+      return textItemsAsDelim(',');
+    }
+    
+    public String textItemsAsDelim(char DELIM) {
+      if (textItems == null)
+        return null;
+      if (textItems.length == 0)
+        return null;
+      
+      StringBuilder result = new StringBuilder();
+      for (int i=0; i<textItems.length; i++) {
+        if (i > 0)
+          result.append(DELIM);
+        if (textItems[i] != null)
+          result.append(textItems[i]);
+      }
+      
+      return result.toString();
+    }
+    
+    public void setText(Object value) {
+      textItems = null;
+      if (value == null) {
+        textItems = new String[1];
+      } else if (value instanceof String[]) {
+        textItems = (String[])value;
+      } else
+        textItems = new String[]{value.toString()};
+    }
     
     public abstract String getFieldID();
     
@@ -178,11 +264,11 @@ public class Equipment {
       this.ElementID = 0;
       this.fieldKnown = other.fieldKnown;
       this.fieldExtended = other.fieldExtended;
-      this.text = other.text;
+      this.textItems = other.textItems;
     }
 
     @Override
-    public LabelElementType getElementType() {
+    public LabelElementType.Impl getElementType() {
       return LabelElementType.station;
     }
 
@@ -213,11 +299,11 @@ public class Equipment {
       this.ElementID = other.ElementID;
       this.fieldKnown = other.fieldKnown;
       this.fieldExtended = other.fieldExtended;
-      this.text = other.text;
+      this.textItems = other.textItems;
     }
 
     @Override
-    public final LabelElementType getElementType() {
+    public final LabelElementType.Impl getElementType() {
       return LabelElementType.channel;
     }
 
@@ -244,15 +330,19 @@ public class Equipment {
   public class EquipmentSetForElement implements Iterable<EquipmentRecBase> {
     private final HashMap<String, EquipmentRecBase> fields = new HashMap<String, EquipmentRecBase>();
     private int chID;
-    private final LabelElementType et;
-    private EquipmentSetForElement(int id, LabelElementType e) {
+    private final LabelElementType.Impl et;
+    private EquipmentSetForElement(int id, LabelElementType.Impl e) {
       this.chID = id;
       this.et = e;
     }
     
+    public boolean remove(String fieldName) {
+      return fields.remove(fieldName) != null;
+    }
+    
     public String getValue(String fieldName) {
       EquipmentRecBase result = fields.get(fieldName);
-      return result != null ? result.text : null;
+      return result != null ? result.textItemsAsDelim(RawTrafficDataHeader.DELIM_FIELD) : null;
     }
 
     private void putAll(EquipmentSetForElement recs) {

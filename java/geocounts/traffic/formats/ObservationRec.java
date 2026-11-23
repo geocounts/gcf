@@ -25,7 +25,7 @@ import java.util.Map;
  * Represents an observation
  *
  */
-public class ObservationRec extends RawTrafficDataTrafficElement implements Comparable<ObservationRec> {
+public class ObservationRec extends RawTrafficDataTrafficElement implements Comparable<ObservationRec>, CoordinateObject {
 
   public long id;
   
@@ -43,13 +43,9 @@ public class ObservationRec extends RawTrafficDataTrafficElement implements Comp
   
   /**
    * @see VehicleFieldsEnum#lat
-   */
-  public double latitude;
-
-  /**
    * @see VehicleFieldsEnum#lng
    */
-  public double longitude;
+  public LatLongCoordinate coordinate = new LatLongCoordinate();
   
   /**
    * @see UserDefinedObservationField
@@ -68,6 +64,11 @@ public class ObservationRec extends RawTrafficDataTrafficElement implements Comp
       }
     }
     return diff;
+  }
+
+  @Override
+  public LatLongCoordinate getCoordinate() {
+    return coordinate;
   }
 
 }

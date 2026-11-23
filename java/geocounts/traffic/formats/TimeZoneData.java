@@ -21,6 +21,9 @@ package geocounts.traffic.formats;
 /**
  * Time zone of the device
  * @see RawTrafficDataStation#SZ
+ * @see DecodingOptions#timeOffset
+ * @see CountryCode#getTZMinutes(String)
+ * 
  */
 public class TimeZoneData {
   /**
@@ -28,26 +31,58 @@ public class TimeZoneData {
    */
   public TimeZoneMeaning meaning = TimeZoneMeaning.local;
   
+  public boolean isUTC() {
+    return meaning == TimeZoneMeaning.utc;
+  }
+  
   private boolean isSet = false;
   private int Hour;
   private int Min;
+
+  public void reset() {
+    meaning = TimeZoneMeaning.local;
+    Hour = 0;
+    Min = 0;
+    isSet = false;
+  }
   
+  /**
+   * 
+   * @param hours Must be between -23 and +23
+   * @param mins Must be between 0 and 60
+   */
   public void set(int hours, int mins) {
     this.isSet = true;
     Hour = hours;
     Min = mins;
-  }
-  
-  public long getTimeInMillis() {
-    return Hour*3600000 + Min*60000;
+    if (Hour < 0)
+      Min = -Min;
   }
   
   /**
-   * Number of milliseconds to subtract from a time stamp read from the file
+   * 
+   * @param minutes May be more than 60
+   */
+  public void setFromMinutes(int minutes) {
+    this.isSet = true;
+    Min = minutes%60;
+    Hour = (minutes-Min)/60;
+  }
+  
+  public int getTimeInMinutes() {
+    return Hour*60 + Min;
+  }
+  
+  public long getTimeInMillis() {
+    return getTimeInMinutes()*60000;
+  }
+  
+  /**
+   * Number of milliseconds to add to a time stamp read from the file
    * @return Number of milliseconds
    */
   public long getRecordedTimestampOffset() {
-    return meaning == TimeZoneMeaning.utc ? getTimeInMillis() : 0;
+    return meaning.getRecordedTimestampOffset(this);
   }
   
   public void copyFrom(TimeZoneData other) {
@@ -77,21 +112,15 @@ public class TimeZoneData {
   public String toString() {
     StringBuilder result = new StringBuilder();
     int absHour = 0;
-    if (getHour() < 0) {
+    if ((getHour() < 0) || (getMin() < 0)) {
       result.append('-');
       absHour = -getHour();
     } else {
       result.append('+');
       absHour = getHour();
     }
-    if (absHour < 10)
-      result.append('0');
-    result.append(absHour);
-    result.append(':');
-    if (getMin() < 10)
-      result.append('0');
-    result.append(getMin());
     
+    result.append(RawFmtUtils.formatHHmm(absHour, Math.abs(getMin())));
     return result.toString();
   }
 

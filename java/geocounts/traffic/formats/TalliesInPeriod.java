@@ -26,14 +26,14 @@ import java.util.Iterator;
  * A set of {@link VehicleTallyRec tallies} for the same period
  * @see RawTrafficData#toTalliesByPeriod()
  */
-public class TalliesInPeriod implements Iterable<VehicleTallyRec>, Comparable<TalliesInPeriod> {
+public class TalliesInPeriod implements Iterable<VehicleTallyRec>, Comparable<TalliesInPeriod>, TimedObject {
   private final HashMap<Integer, VehicleTallyRec> recsByChannelID = new HashMap<Integer, VehicleTallyRec>();
   private final int hour;
   private final int periodID;
   private final long firstHourTime;
   private final long tallyActualStart;
   protected TalliesInPeriod(VehicleTallyRec first) {
-    this(first.getTime(), first.period, first.getTimeActualStart());
+    this(first.getTime(), first.getHourlySubPeriod(), first.getTimeActualStart());
     this.recsByChannelID.put(first.channelID, first);
   }
   
@@ -69,6 +69,7 @@ public class TalliesInPeriod implements Iterable<VehicleTallyRec>, Comparable<Ta
     return periodID;
   }
   
+  @Override
   public long getTime() {
     return firstHourTime;
   }
@@ -106,7 +107,7 @@ public class TalliesInPeriod implements Iterable<VehicleTallyRec>, Comparable<Ta
   }
   
   public boolean add(VehicleTallyRec vtr) {
-    if ((vtr.getTime() == getTime()) && (vtr.period == this.periodID)) {
+    if ((vtr.getTime() == getTime()) && (vtr.getHourlySubPeriod() == this.getPeriodID())) {
       recsByChannelID.put(vtr.channelID, vtr);
       return true;
     }
@@ -119,10 +120,12 @@ public class TalliesInPeriod implements Iterable<VehicleTallyRec>, Comparable<Ta
 
   @Override
   public int compareTo(TalliesInPeriod other) {
-    return compareLong(this.getTallyActualStart(), other.getTallyActualStart());
+    return RawFmtUtils.compareLong(this.getTallyActualStart(), other.getTallyActualStart());
   }
   
-  private int compareLong(long x, long y) {
-    return (x < y) ? -1 : ((x == y) ? 0 : 1);
+  @Override
+  public String toString() {
+    long time = recsByChannelID.values().iterator().next().getTimeActualStart();
+    return RawFmtUtils.simpleDateFormat("HH:mm").format(time);
   }
 }

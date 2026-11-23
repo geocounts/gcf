@@ -26,15 +26,20 @@ public abstract class RawTrafficDataHeaderElement {
    */
   protected abstract String[] write();
   protected abstract void read(String[] data);
+  
+  /**
+   * Clears this element
+   */
+  public abstract void clear();
 
-  public final void copyFrom(RawTrafficDataHeaderElement e) throws Exception {
+  public final void copyFrom(RawTrafficDataHeaderElement e) {
     if (!this.getClass().equals(e.getClass()))
       RawFmtUtils.throwException(this, "Header elements must be the same", e.getClass());
     this.read(e.write());
   }
   
   public final void fromLine(String line) {
-    String[] data = RawFmtUtils.split(line, ',');
+    String[] data = RawFmtUtils.split(line, RawTrafficDataHeader.DELIM_FIELD);
     read(data);
   }
 

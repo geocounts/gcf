@@ -32,10 +32,20 @@ public class SystemVersion extends RawTrafficDataHeaderElement {
   public final List<String> sourceFilenames = new ArrayList<String>();
   
   public SystemVersion() {
-    formatVersion = 1;
-    producerVersion = null;
+    clear();
   }
 
+  public String getFirstSourceFilename() {
+    return sourceFilenames.size() > 0 ? sourceFilenames.get(0) : null;
+  }
+  
+  @Override
+  public void clear() {
+    formatVersion = FORMAT_VERSION.MAJOR_VERSION;
+    producerVersion = null;
+    sourceFilenames.clear();
+  }
+  
   @Override
   public EnumHeaderRecords getSourceRecord() {
     return EnumHeaderRecords.FV;

@@ -18,6 +18,8 @@
  */
 package geocounts.traffic.formats;
 
+import java.util.GregorianCalendar;
+
 /**
  * Represents a tally record.
  * Create this using the {@link TallyRecordsDef#create(int, int)}
@@ -26,31 +28,91 @@ package geocounts.traffic.formats;
  */
 public class VehicleTallyRec extends RawTrafficDataTrafficElement implements Comparable<VehicleTallyRec> {
   private final TallyRecordsDef T;
-  private final long subtractTimezone;
   
-  protected VehicleTallyRec(TallyRecordsDef T, int channelID, int period, long subtractTimezone) {
+  protected VehicleTallyRec(TallyRecordsDef T, int channelID, int period) {
     this.T = T;
-    this.subtractTimezone = subtractTimezone;
     trafficmonitoring = new TrafficMonitoringTallyCountFields();
     userdefined       = new UserDefinedTallyFields(T);
 
     super.channelID = channelID;
-    this.period = period;
+    this._period = period;
 
     T.TC.resetCounts(this);
     T.TL.resetCounts(this);
     T.TS.resetCounts(this);
 
     if (T.TO.hasSpeedByLength())
-      this.countsSpeedByLength = new int[T.TS.getNumberOfBinsInRecord()][T.TL.getNumberOfBinsInRecord()];
+      this.countsSpeedByLength = new TwoDimensionalArray(T.TS.getNumberOfBinsInRecord(), T.TL.getNumberOfBinsInRecord());
     else
       this.countsSpeedByLength = null;
+
+    if (T.TO.hasSpeedByVehType())
+      this.countsSpeedByVehType = new TwoDimensionalArray(T.TS.getNumberOfBinsInRecord(), T.TC.getNumberOfBinsInRecord());
+    else
+      this.countsSpeedByVehType = null;
   }
 
   /**
    * @see ClassifiedVehTypeDef
    */
-  public int[] countsVehType;
+  public NumberArray countsVehType;
+  public NumberArray initCountsVehType(int count) {
+    countsVehType = new NumberArray(count);
+    return countsVehType;
+  }
+  
+  public NumberArray initCountsVehType(double[] newValues) {
+    countsVehType = new NumberArray(newValues.length);
+    for (int i=0; i<newValues.length; i++)
+      countsVehType.values[i] = newValues[i];
+    return countsVehType;
+  }
+  
+  public static class NumberArray {
+    private final double[] values;
+    public final int length;
+    
+    public NumberArray(int count) {
+      values = new double[count];
+      length = count;
+    }
+
+    public int[] asInt() {
+      int[] result = new int[values.length];
+      for (int i=0; i<values.length; i++)
+        result[i] = (int)Math.round(values[i]);
+      return result;
+    }
+    
+    public double getDouble(int index) {
+      return values[index];
+    }
+
+    public int getInt(int index) {
+      return (int)Math.round(values[index]);
+    }
+    
+    public double[] asDouble() {
+      return values;
+    }
+
+    public void set(int index, double value) {
+      values[index] = value;
+    }
+
+    public void add(int index, double amount) {
+      values[index] += amount;
+    }
+
+    public void add(NumberArray other) {
+      for (int i=0; i<values.length; i++)
+        this.add(i, other.values[i]);
+    }
+
+    public void inc(int index) {
+      values[index] += 1;
+    }
+  }
   
   /**
    * @see ClassifiedLengthDef
@@ -67,25 +129,42 @@ public class VehicleTallyRec extends RawTrafficDataTrafficElement implements Com
    * @see ClassifiedSpeedDef
    * @see ClassifiedLengthDef
    */
-  public int[][] countsSpeedByLength;
+  public TwoDimensionalArray countsSpeedByLength;
+  
+  /**
+   * First dimension is Speed, Second is vehicle type
+   * @see ClassifiedSpeedDef
+   * @see ClassifiedVehTypeDef
+   * @since 1.320
+   */
+  public TwoDimensionalArray countsSpeedByVehType;
   
   /**
    * @see TrafficMonitoringTallyCountFields
    */
   public final TrafficMonitoringTallyCountFields trafficmonitoring;
+  
   /**
    * This is never null
    */
   public final UserDefinedTallyFields userdefined;
+  
+  private int _period;
   
   /**
    * If this is zero, it means a full hourly period.
    * Non zero means one of the periods in a partial hour. For example if the tally duration is {@link TallyDurationEnum#m15 quarter hourly}, the time between 15 - 30 is period = 2
    * @see {@link TallyRecordsDef#TD TD header}
    */
-  public final int period;
+  public int getHourlySubPeriod() {
+    return _period;
+  }
+  
+  /**
+   * @return true if this tally represents a full hour.
+   */
   public boolean isFullHour() {
-    return period == 0;
+    return _period == 0;
   }
   
   /**
@@ -94,6 +173,14 @@ public class VehicleTallyRec extends RawTrafficDataTrafficElement implements Com
    */
   public TallyDurationEnum getTD() {
     return T.TD;
+  }
+  
+  /**
+   * 
+   * @return The {@link ClassifiedVehTypeDef}
+   */
+  public ClassifiedVehTypeDef getTC() {
+    return T.TC;
   }
   
   /**
@@ -111,11 +198,24 @@ public class VehicleTallyRec extends RawTrafficDataTrafficElement implements Com
       RawFmtUtils.throwException(this, "Month must be between 0 and 11", month);
     if ((hour < 0) || (hour > 23))
       RawFmtUtils.throwException(this, "Hour must be between 0 and 23", hour);
-    setHourAdjustTZ(RawFmtUtils.newGregorianCalendar(year, month, day, hour).getTimeInMillis());
+    
+    GregorianCalendar gc = RawFmtUtils.newGregorianCalendar(year, month, day, hour);
+    time = gc.getTimeInMillis();
   }
   
-  public void setHourAdjustTZ(long noTZ) {
-    super.time = noTZ - subtractTimezone;
+  public void addTDTime(int numberOfTDIncrements) {
+    GregorianCalendar gc = RawFmtUtils.newGregorianCalendar(this.getTimeActualStart());
+    T.TD.add(gc, numberOfTDIncrements);
+    
+    if (T.TD.isSubHour()) {
+//      long newActualTime = gc.getTimeInMillis();
+      int numberOfMins = gc.get(GregorianCalendar.MINUTE);
+      RawFmtUtils.resetHour(gc);
+      
+      this._period = T.TD.getHourlySubPeriod(numberOfMins);
+    }
+
+    super.time = gc.getTimeInMillis();
   }
   
   /**
@@ -127,7 +227,7 @@ public class VehicleTallyRec extends RawTrafficDataTrafficElement implements Com
    */
   public boolean addVehType(int vclass, int addCount) {
     try {
-      this.countsVehType[vclass] += addCount;
+      this.countsVehType.add(vclass, addCount);
       return true;
     } catch (ArrayIndexOutOfBoundsException possible) {}
     return false;
@@ -158,12 +258,12 @@ public class VehicleTallyRec extends RawTrafficDataTrafficElement implements Com
   }
 
   @Override
-  public int compareTimes(RawTrafficDataTrafficElement o) {
+  public int compareTimes(TimedObject o) {
     int diff = super.compareTimes(o);
     if (diff == 0) {
       if (o instanceof VehicleTallyRec) {
         VehicleTallyRec vtr = (VehicleTallyRec)o;
-        return this.period - vtr.period;
+        return this.getHourlySubPeriod() - vtr.getHourlySubPeriod();
       }
     }
     return diff;
@@ -185,7 +285,7 @@ public class VehicleTallyRec extends RawTrafficDataTrafficElement implements Com
    */
   public long getTimeActualStart() {
     if (T.TD.periodsPerHour() > 1) // subhourly tallies
-      return super.getTime() + (period-1)*T.TD.getMSecs();
+      return super.getTime() + (_period-1)*T.TD.getMSecs();
     return super.getTime(); // hourly or longer tallies
   }
   
@@ -196,7 +296,12 @@ public class VehicleTallyRec extends RawTrafficDataTrafficElement implements Com
    */
   public long getTimeActualEnd() {
     if (T.TD.periodsPerHour() > 1) // subhourly tallies
-      return super.getTime() + period*T.TD.getMSecs();
+      return super.getTime() + _period*T.TD.getMSecs();
+    if (T.TD.minutes == 0) { // year and month
+      GregorianCalendar gc = RawFmtUtils.newGregorianCalendar(super.getTime());
+      T.TD.inc(gc);
+      return gc.getTimeInMillis();
+    }
     return super.getTime() + T.TD.getMSecs();  // hourly or longer tallies
   }
   
@@ -215,8 +320,7 @@ public class VehicleTallyRec extends RawTrafficDataTrafficElement implements Com
   }
 
   public void addToTotals(VehicleTallyRec source) {
-    for (int i=0; i<countsVehType.length; i++)
-      countsVehType[i] += source.countsVehType[i];
+    countsVehType.add(source.countsVehType);
     for (int i=0; i<countsLength.length; i++)
       countsLength[i] += source.countsLength[i];
     for (int i=0; i<countsSpeed.length; i++)
@@ -227,6 +331,88 @@ public class VehicleTallyRec extends RawTrafficDataTrafficElement implements Com
     }
     if ((userdefined != null) && (source.userdefined != null)) {
       userdefined.addToTotals(source.userdefined);
+    }
+  }
+  
+  @Override
+  public String toString() {
+    return RawFmtUtils.ISO8601_MSECS_format(getTimeActualStart()) + " " + T.TD + " " + channelID;
+  }
+  
+  public static class OneDimensionalArray {
+    final int[] data;
+    int above;
+    private OneDimensionalArray(int dim) {
+      data = new int[dim];
+    }
+    
+    public void inc(int dim) {
+      if (dim < data.length)
+        data[dim]++;
+      else
+        above++;
+    }
+    
+    public void set(int dim, int value) {
+      if (dim < data.length)
+        data[dim] = value;
+      else
+        above += value;
+    }
+  }
+  
+  public static class TwoDimensionalArray {
+    public TwoDimensionalArray(int dim1, int dim2) {
+      data = new OneDimensionalArray[dim1];
+      for (int i=0; i<data.length; i++)
+        data[i] = new OneDimensionalArray(dim2);
+      aboveDim1 = new int[dim2];
+    }
+
+    private final OneDimensionalArray[] data;
+    
+    /**
+     * Stores the number that exceeded the bounds of dimension 1, for each dimension 2
+     * This has the same number of elements as dimension 2
+     */
+    private final int[] aboveDim1;
+    
+    public int getAboveDim1(int dim2) {
+      return aboveDim1[dim2];
+    }
+    
+    public int getAboveDim2(int dim1) {
+      return data[dim1].above;
+    }
+
+    public int get(int dim1, int dim2) {
+      return data[dim1].data[dim2];
+    }
+    
+    public int getDim1Size() {
+      return data.length;
+    }
+    
+    public int getDim2Size() {
+      return data[0].data.length;
+    }
+
+    public void inc(int dim1, int dim2) {
+      if (dim1 < data.length) {
+        data[dim1].inc(dim2);
+      } else
+        aboveDim1[dim2]++;
+    }
+
+    public void set(int dim1, int dim2, int value) {
+      if (dim1 < data.length) {
+        data[dim1].set(dim2, value);
+      } else
+        aboveDim1[dim2] += value;
+    }
+    
+    public int[] getData(int dim1) {
+      return data[dim1].data;
     }
   }
 }

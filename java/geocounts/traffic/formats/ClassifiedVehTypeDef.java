@@ -22,6 +22,7 @@ package geocounts.traffic.formats;
  * Describes a classification system for vehicle type
  * @see EnumHeaderRecords#TC
  * @see VehicleTallyRec#countsVehType
+ * @see WKClassificationSystemName
  */
 public final class ClassifiedVehTypeDef extends ClassifiedDef {
   /**
@@ -64,18 +65,18 @@ public final class ClassifiedVehTypeDef extends ClassifiedDef {
   
   @Override
   public double getTally(VehicleTallyRec tally, int bin) {
-    return tally.countsVehType[bin];
+    return tally.countsVehType.getDouble(bin);
   }
 
   @Override
   public void addToTotals(VehicleTallyRec source, VehicleTallyRec destination) {
     for (int i=0; i<destination.countsVehType.length; i++)
-      destination.countsVehType[i] += getTally(source, i);
+      destination.countsVehType.add(i, getTally(source, i));
   }
   
   @Override
   public int getBin(VehicleRec rec) {
-    return rec.otherClassifications.vclassType[0];
+    return rec.getTCValue();
   }
 
   @Override
@@ -84,7 +85,7 @@ public final class ClassifiedVehTypeDef extends ClassifiedDef {
   }
 
   @Override
-  protected String[] write() {
+  public String[] write() {
     if (!isRecording())
       return null;
     if (LowestClassID > 0)
@@ -94,18 +95,23 @@ public final class ClassifiedVehTypeDef extends ClassifiedDef {
   
   @Override
   protected void read(String[] data) {
-    int lowest = 0;
+    int MIN = 0;
     if (data.length >= 4) {
       try {
-        lowest = Integer.parseInt(data[3]);
+        MIN = Integer.parseInt(data[3]);
       } catch (Exception ex) {}
     }
     
-    this.setAll(data[0], 
-                Integer.parseInt(data[1]),
-                lowest);
+    int MAX = 0;
+    if (data.length > 1)
+      MAX = Integer.parseInt(data[1]);
+    this.setAll(data[0], MAX, MIN);
+    if (MAX == 0) {
+      if (super.WKID != null)
+        this.HighestClassID = super.WKID.getHighIndex();
+    }
   }
-  
+
   public void copyFrom(ClassifiedVehTypeDef other) {
     this.setName(other.getName());
     this.LowestClassID = other.LowestClassID;
@@ -120,6 +126,6 @@ public final class ClassifiedVehTypeDef extends ClassifiedDef {
   }
 
   public void resetCounts(VehicleTallyRec tally) {
-    tally.countsVehType = new int[this.getNumberOfBinsInRecord()];
+    tally.initCountsVehType(this.getNumberOfBinsInRecord());
   }
 }

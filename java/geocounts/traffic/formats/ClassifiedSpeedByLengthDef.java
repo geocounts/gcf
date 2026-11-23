@@ -26,5 +26,13 @@ public class ClassifiedSpeedByLengthDef {
   public ClassifiedSpeedByLengthDef(TallyRecordsDef trd) {
     _parent = trd;
   }
+  
+  public void copyFrom(ClassifiedSpeedByLengthDef tP) {
+    // Does nothing
+  }
+
+  public boolean isRecording() {
+    return _parent.TO.hasPart(TallyPartOrderEnum.TP);
+  }
 
 }

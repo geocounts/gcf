@@ -24,8 +24,15 @@ package geocounts.traffic.formats;
  * @see VehicleRec
  */
 public interface ObservationField extends IdDesc {
-  public boolean isNumeric();
-  public String get(VehicleRec veh, UnitsUsed units) throws Exception;
+  public GCFieldType getFieldType();
+  
+  /**
+   * @return The value of this field, including null as one of the {@link GCFieldType}
+   * @throws Exception
+   */
+  public Object getValue(VehicleRec veh, UnitsUsed units) throws Exception;
+  
+  public String get(VehicleRec veh, UnitsUsed units);
   public void set(String value, UnitsUsed units, VehicleRec result) throws Exception;
   public boolean equals(Object obsField);
 }

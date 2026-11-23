@@ -23,6 +23,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * Represents the data in a GEOCOUNTS file.
@@ -46,6 +48,10 @@ public class RawTrafficData {
    * Vehicle records
    */
   private final List<VehicleRec> observations = new ArrayList<VehicleRec>();
+ 
+  protected VehicleRec _getVehicleRec(int index) {
+    return observations.get(index);
+  }
   
   /**
    * {@link MonitoringEventRec Monitoring events}
@@ -71,11 +77,16 @@ public class RawTrafficData {
   
   /**
    * Get all {@link VehicleTallyRec}
-   * @return Iterable of {@link VehicleTallyRec}
+   * @return Collection of {@link VehicleTallyRec}
    */
-  public Iterable<VehicleTallyRec> tallies() {
+  public Collection<VehicleTallyRec> tallies() {
     return tallies;
   }
+  
+  public void addTallies(Collection<VehicleTallyRec> tly) {
+    tallies.addAll(tly);
+  }
+  
   
   /**
    * Get tallies for the given channel ID
@@ -123,8 +134,15 @@ public class RawTrafficData {
     if (this.numberOfTallies() == 0)
       return;
 
-    header.S.SR.set(getFirstTally().getTime(), 
-                    getLastTally().getTime() + (addTDToLast ? header.T.TD.getMSecs() : 0));
+    long addToLastTime = 0;
+    if (addTDToLast) {
+      if (header.T.TD.minutes < 60)
+        addToLastTime = TallyDurationEnum.hr.getMSecs();
+      else
+        addToLastTime = header.T.TD.getMSecs();
+    }
+    
+    header.S.SR.set(getFirstTally().getTime(), getLastTally().getTime() + addToLastTime);
   }
   
   public void setStationStartStopFromObservations() {
@@ -135,6 +153,10 @@ public class RawTrafficData {
     this.header.S.SR.set(firstAndLast[0].getTime(), firstAndLast[1].getTime());
   }
   
+  /**
+   * 
+   * @return The number of {@link VehicleTallyRec}
+   */
   public int numberOfTallies() {
     return tallies.size();
   }
@@ -164,6 +186,11 @@ public class RawTrafficData {
     result.addAll(periods.values());
     Collections.sort(result);
     return result;
+  }
+  
+  public VehicleRecFileIndex toVehicleRecIndex(TallyDurationEnum td) {
+    this.sortObservations();
+    return new VehicleRecFileIndex(td, this);
   }
   
   public void changeChannel(int fromChannel, int toChannel) throws Exception {
@@ -210,11 +237,11 @@ public class RawTrafficData {
     observations.clear();
   }
   
-  public void addAll(List<VehicleRec> obs) {
+  public void addObservations(Collection<VehicleRec> obs) {
     observations.addAll(obs);
   }
   
-  public void removeAll(Collection<VehicleRec> obs) {
+  public void removeObservations(Collection<VehicleRec> obs) {
     observations.removeAll(obs);
   }
   
@@ -244,8 +271,33 @@ public class RawTrafficData {
    * @param nameSpace If null, return all the observations
    * @return All the counted events associated with the nameSpace
    */
-  public Iterable<VehicleRec> observations() {
+  public Collection<VehicleRec> observations() {
     return observations;
+  }
+  
+  /**
+   * 
+   * @param filter Limits what will be received by the receiver
+   * @param receiver Receives observations which pass through the filter
+   * @return Number of observations which passes the filter
+   */
+  public int observations(Predicate<VehicleRec> filter, Consumer<VehicleRec> receiver) {
+    int result = 0;
+    if (filter == null) {
+      for (VehicleRec v: observations) {
+        receiver.accept(v);
+        result++;
+      }
+      return result;
+    }
+    
+    for (VehicleRec v: observations) {
+      if (filter.test(v)) {
+        receiver.accept(v);
+        result++;
+      }
+    }
+    return result;
   }
   
   public int numberOfObservations() {
@@ -257,12 +309,11 @@ public class RawTrafficData {
    * @return An array having a length the same as the number of channels
    */
   public int[] numberOfObservationsByChannel() {
-    List<ChannelData> channels = header.S.getAllChannels();
-    int[] result = new int[channels.size()];
+    int[] result = new int[header.S.getNumberOfChannels()];
     int[] index = new int[100];
 
-    for (int i=0; i<channels.size(); i++) {
-      int chID = channels.get(i).getChannelID();
+    for (int i=0; i<result.length; i++) {
+      int chID = header.S.getChannelFromIndex(i).getChannelID();
       index[chID] = i;
     }
     
@@ -351,9 +402,8 @@ public class RawTrafficData {
    * @see RawTrafficData#numberOfVehiclesByChannel()
    */
   public java.util.Map<Integer, Integer> getTalliedMotorizedVehsByChannel() {
-    List<ChannelData> channels = header.S.getAllChannels();
     java.util.HashMap<Integer, int[]> counts = new java.util.HashMap<Integer, int[]>();
-    for (ChannelData cd: channels) {
+    for (ChannelData cd: header.S.getAllChannels()) {
       counts.put(cd.getChannelID(), new int[1]);
     }
 
@@ -434,10 +484,9 @@ public class RawTrafficData {
   
   /**
    * Used to exclude channels that are not in the header
-   * @author scropley
    *
    */
-  private class HeaderChannelFilter implements ChannelIDFilter {
+  private static class HeaderChannelFilter implements ChannelIDFilter {
     private final RawTrafficDataHeader h;
     private HeaderChannelFilter(RawTrafficDataHeader _h) {
       h = _h;
@@ -452,15 +501,15 @@ public class RawTrafficData {
   
   /**
    * Used to include all channels
-   * @author scropley
    *
    */
-  private class AllChannels implements ChannelIDFilter {
+  private static class AllChannels implements ChannelIDFilter {
     @Override
     public boolean include(int channelID) {
       return true;
     }
   }
+  
   /*
   private class OneChannel implements ChannelIDFilter {
     private final int channelID;
@@ -474,36 +523,37 @@ public class RawTrafficData {
     }
   }
   */
-}
 
-class ChangeTallyChannels implements ChannelIDChange {
-  private final Iterable<VehicleTallyRec> tallies;
-  
-  ChangeTallyChannels(RawTrafficData data) {
-    tallies = data.tallies();
+  private static class ChangeTallyChannels implements ChannelIDChange {
+    private final Iterable<VehicleTallyRec> tallies;
+    
+    ChangeTallyChannels(RawTrafficData data) {
+      tallies = data.tallies();
+    }
+    
+    @Override
+    public void changeChannel(int fromChannel, int toChannel) throws Exception {
+      for (VehicleTallyRec t: tallies)
+        if (t.channelID == fromChannel)
+          t.channelID = toChannel;
+    }
+    
   }
   
-  @Override
-  public void changeChannel(int fromChannel, int toChannel) throws Exception {
-    for (VehicleTallyRec t: tallies)
-      if (t.channelID == fromChannel)
-        t.channelID = toChannel;
+  private static class ChangeVehicleChannels implements ChannelIDChange {
+    private final Iterable<VehicleRec> observations;
+    
+    ChangeVehicleChannels(RawTrafficData data) {
+      observations = data.observations();
+    }
+    
+    @Override
+    public void changeChannel(int fromChannel, int toChannel) throws Exception {
+      for (VehicleRec v: observations)
+        if (v.channelID == fromChannel)
+          v.channelID = toChannel;
+    }
+    
   }
-  
-}
 
-class ChangeVehicleChannels implements ChannelIDChange {
-  private final Iterable<VehicleRec> observations;
-  
-  ChangeVehicleChannels(RawTrafficData data) {
-    observations = data.observations();
-  }
-  
-  @Override
-  public void changeChannel(int fromChannel, int toChannel) throws Exception {
-    for (VehicleRec v: observations)
-      if (v.channelID == fromChannel)
-        v.channelID = toChannel;
-  }
-  
 }

@@ -28,7 +28,6 @@ package geocounts.traffic.formats;
  * Among all devices manufactured with the same vendor prefix, each is given their own unique 24-bit number. 
  * Note that hardware from different vendors may happen to share the same device portion of the address.<br />
  * 
- * @author scropley
  * @see https://en.wikipedia.org/wiki/MAC_address
  * @see https://www.lifewire.com/introduction-to-mac-addresses-817937
  * @see <a href="http://aruljohn.com/mac/A0CBFD">Samsung Electronics Co.,Ltd</a>

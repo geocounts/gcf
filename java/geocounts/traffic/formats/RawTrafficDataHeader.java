@@ -19,6 +19,7 @@
 package geocounts.traffic.formats;
 
 import java.util.ArrayList;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,10 @@ import java.util.Map;
  * @see RawTrafficData
  */
 public class RawTrafficDataHeader {
+  @Override
+  public String toString() {
+    return S.toString();
+  }
   
   /**
    * GEOCOUNTS: license key
@@ -71,10 +76,14 @@ public class RawTrafficDataHeader {
     return S.getChannel(channelID);
   }
   
+  /**
+   * 
+   * @param channelID
+   * @return The index or -1 if not found
+   */
   public int getIndexOfChannel(int channelID) {
-    List<ChannelData> channels = S.getAllChannels();
-    for (int i=0; i<channels.size(); i++) {
-      if (channels.get(i).getChannelID() == channelID)
+    for (int i=0; i<S.getNumberOfChannels(); i++) {
+      if (S.getChannelFromIndex(i).getChannelID() == channelID)
        return i;
     } 
     return -1;
@@ -89,16 +98,17 @@ public class RawTrafficDataHeader {
    */
   public Map<Integer, Integer> getChannelIndex() {
     HashMap<Integer, Integer> result = new HashMap<Integer, Integer>();
-    List<ChannelData> channels = S.getAllChannels();
-    for (int i=0; i<channels.size(); i++) {
-      result.put(channels.get(i).getChannelID(), i);
+
+    for (int i=0; i<S.getNumberOfChannels(); i++) {
+      result.put(S.getChannelFromIndex(i).getChannelID(), i);
     }
     return result;
   }
-  
+
   /**
-   * Tally record field definitions
+   * Tally record definition
    * @see TallyRecordsDef
+   * @see VehicleTallyRec
    */
   public final TallyRecordsDef T;
 
@@ -114,17 +124,24 @@ public class RawTrafficDataHeader {
    * @see AxleRecordDef
    */
   public final AxleRecordDef VA;
+
+  /**
+   * Axle group record field definitions. Axle group records are subsets of {@link VV vehicle records}
+   * @see AxleGroupRecordDef
+   */
+  public final AxleGroupRecordDef VG;
   
   public RawTrafficDataHeader() {
     F = new RawTrafficDataHeaderFileDef();
     S = new RawTrafficDataStation(this);
-    T = new TallyRecordsDef(this.F, this.S.SZ);
+    T = new TallyRecordsDef(this.F);
     VV = new VehicleRecordDef(this.S.SZ);
     VA = new AxleRecordDef();
+    VG = new AxleGroupRecordDef();
   }
   
   public MonitoringEventRec newMonitoringEventRec(long timeUTCAccountedFor) {
-    return MonitoringEventRec.createNoTZ(timeUTCAccountedFor - S.SZ.getRecordedTimestampOffset());
+    return MonitoringEventRec.createNoTZ(timeUTCAccountedFor);
   }
   
   private final List<ChannelIDChange> channelIDChangers = new ArrayList<ChannelIDChange>();
@@ -139,12 +156,13 @@ public class RawTrafficDataHeader {
     }
   }
 
+  /*
   private java.text.DateFormat tallyDF = null;
   
   /**
    * yyyy/MM/dd,HH
    * @return The tally date format
-   */
+   *
   public java.text.DateFormat getTallyDateFormat() {
     if (tallyDF == null)
       tallyDF = RawFmtUtils.sdfHeaderT();
@@ -156,13 +174,15 @@ public class RawTrafficDataHeader {
   /**
    * yyyy/MM/dd,HH:mm:ss.SSS
    * @return The vehicle record date format
-   */
+   *
   public java.text.DateFormat getObservationDateFormat() {
     if (obsDF == null)
       obsDF = RawFmtUtils.sdfHeaderV();
     return obsDF;
   }
 
+  */
+  
   public int compareTo(long time) {
     return S.SR.compareTo(time);
   }
@@ -172,7 +192,7 @@ public class RawTrafficDataHeader {
    * @return {@link RawTrafficDataHeader}
    * @throws Exception
    */
-  public RawTrafficDataHeader copy() throws Exception {
+  public RawTrafficDataHeader copy() {
     RawTrafficDataHeader result = new RawTrafficDataHeader();
 
     result.GK.copyFrom(this.GK);
@@ -196,5 +216,32 @@ public class RawTrafficDataHeader {
     this.VV.mergeFrom(other.VV);
     this.VA.mergeFrom(other.VA);
   }
-
+  
+  
+  
+  public static final char DELIM_FIELD = ',';
+  public static final char DATE_FIELD = '/';
+  
+  public long parseHeaderEventDateTime(String dateTime) {
+    String[] datetime = RawFmtUtils.split(dateTime, DELIM_FIELD);
+    return parseHeaderEventDateTime(datetime[0], datetime[1]);   // getObservationDateFormat().parse(value).getTime()
+  }
+  
+  public long parseHeaderEventDateTime(String date, String time) {
+    return TxtFileBodyDelimiters.parseBodyEventDateTime(this, date, time, DATE_FIELD);
+  }
+  
+  /**
+   * 
+   * @see TxtFileBodyDelimiters#formatBodyEventTime(long)
+   */
+  public String formatHeaderEventDateTime(long time) {
+    // getObservationDateFormat().format(time);
+    GregorianCalendar gc = RawFmtUtils.newGregorianCalendar(time);
+    StringBuilder result = new StringBuilder();
+    TxtFileBodyDelimiters.formatBodyEventDate(gc, DATE_FIELD, result);
+    result.append(DELIM_FIELD);
+    TxtFileBodyDelimiters.formatBodyEventTime(gc, result);
+    return result.toString();
+  }
 }
